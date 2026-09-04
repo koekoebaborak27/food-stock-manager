@@ -10,11 +10,12 @@
 
 ## 状況
 
-**要件定義まで完了。実装は未着手です。**
+**要件定義が完了し、基本設計に着手しました。実装は未着手です。**
 
 | 種類 | 場所 |
 |---|---|
 | 要件定義書 | [`docs/specs/01_requirements/`](docs/specs/01_requirements/README.md) |
+| 基本設計書 | [`docs/specs/02_basic-design/`](docs/specs/02_basic-design/README.md) |
 | 決定の経緯 | [`docs/todo/history/`](docs/todo/history/README.md) |
 | 残タスク・現在地 | [`docs/todo/TODO.md`](docs/todo/TODO.md) |
 

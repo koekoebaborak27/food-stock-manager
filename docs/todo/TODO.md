@@ -23,7 +23,7 @@
 | 区分 | 進捗 |
 | --- | --- |
 | 要件定義 | 5 / 5 |
-| 基本設計 | 0 / 5 |
+| 基本設計 | 1 / 5 |
 | インフラ構築 | 0 / 1 |
 | 実装 | 0 / 1 |
 
@@ -36,7 +36,7 @@ git log --oneline -1     # 現在のコミット
 git status --porcelain   # 未コミット差分がないか確認
 ```
 
-- [ ] 1. 基本設計を書く。まず `docs/specs/02_basic-design/画面遷移図.md` を [`docs/diagrams.md`](../diagrams.md) の手順に従って `.mmd` + `.svg` で作る。
+- [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [ ] 2. 未決事項を決める。[`01_プロダクト共通.md` の「10. 未決事項」](../specs/01_requirements/00_共通/01_プロダクト共通.md) の 6 件のうち、1（アクセス制御の方式）・4（通知の配信基盤）・6（検索対象）を基本設計で決める。
 - [ ] 3. 機能ごとの基本設計を書く。`00_共通` → `10_認証と家族グループ` → `20_常備食管理` → `30_買い物リスト` → `40_期限通知` の順。画面項目・入力チェック・**実際に表示するエラー文言**・DB への影響を書く。
 - [ ] 4. `package.json` に Next.js / NestJS の依存とスクリプトを足し、`pnpm install` → `pnpm lint && pnpm typecheck && pnpm test` が通ることを確認する。
@@ -57,7 +57,7 @@ git status --porcelain   # 未コミット差分がないか確認
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `typecheck` / `test` / `format:check` が通る） |
 | 本番 | 未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)） |
-| 基本設計 | 未着手 |
+| 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md) まで完了。機能ごとの基本設計は未着手 |
 | 実装 | 未着手 |
 
 ## 完了済みの作業

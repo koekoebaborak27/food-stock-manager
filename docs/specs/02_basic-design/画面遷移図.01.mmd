@@ -1,0 +1,68 @@
+%%{init: {'theme':'default','themeVariables':{'fontFamily':"'Noto Sans CJK JP', sans-serif"},'flowchart':{'nodeSpacing':50,'rankSpacing':85,'padding':12}}}%%
+flowchart TB
+  appStart([アプリを開く]) --> login
+  push[/期限のプッシュ通知/] -->|通知を押す| stock
+
+  subgraph auth[認証と家族グループ]
+    direction TB
+    login[ログイン]
+    choose[家族グループの選択]
+    create[家族グループをつくる]
+    join[招待コードで参加する]
+  end
+
+  login -->|ログイン成功・どこにも所属していない| choose
+  login -->|ログイン成功・すでに所属している| stock
+  choose -->|つくる| create
+  choose -->|参加する| join
+  create -->|作成する| stock
+  join -->|参加する| stock
+
+  subgraph tabs[下部タブの3画面]
+    direction LR
+    stock[常備食リスト]
+    shop[買い物リスト]
+    used[消費済リスト]
+  end
+
+  stock <--> shop
+  shop <--> used
+
+  stock -. カートから追加する .-> shop
+  used -. 買い物リストへ追加する .-> shop
+  stock -. ゴミ箱から削除する .-> stock
+  shop -. ゴミ箱から削除する .-> shop
+
+  subgraph food[常備食]
+    direction TB
+    detail[常備食の詳細]
+    edit[常備食の登録・編集]
+  end
+
+  stock -->|カードを押す| detail
+  stock -->|右下の追加ボタン| edit
+  detail -->|編集する| edit
+  detail -->|削除する。確認したうえで実行| stock
+  edit -->|保存する。または入力をやめる| stock
+  used -->|常備食へ戻す。編集画面が開く| edit
+
+  stock --> menu
+  shop --> menu
+  used --> menu
+  menu{{ヘッダーのメニュー}}
+
+  subgraph settings[メニューから開く画面]
+    direction TB
+    members[メンバーと家族グループ]
+    invite[招待コードの発行]
+    notify[通知の設定]
+    account[アカウントの設定]
+  end
+
+  menu --> members
+  menu --> notify
+  menu --> account
+
+  members -->|招待コードを発行する| invite
+  members -->|脱退する。または家族グループを削除する| choose
+  account -->|ログアウトする。または退会する| login
