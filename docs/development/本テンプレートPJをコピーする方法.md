@@ -1,6 +1,6 @@
 # 本テンプレートPJをコピーする方法
 
-新しいプロジェクトを始めるときに、このテンプレート（`ai-dev-template`）から新しいリポジトリを作る手順。**「リポジトリをどう作るか」がこのファイルの範囲**で、コピー後の中身の書き換え（`AGENTS.md` のプレースホルダなど）は [`README.md`](../../README.md)「新規プロジェクトへのコピー方法」の 2 番以降を参照。
+新しいプロジェクトを始めるときに、このテンプレート（`ai-dev-template`）から新しいリポジトリを作る手順。リポジトリの作り方（方法A / 方法B）に続けて、コピー後の中身の書き換え（`AGENTS.md` のプレースホルダなど）を[「コピーした後にやること」](#コピーした後にやること)にまとめてある。
 
 ## どちらの方法を使うか
 
@@ -64,7 +64,7 @@ cd C:/work/code/kojin_learn/<新しいリポジトリ名>
 git log --oneline -1 && git remote -v
 ```
 
-コミットが1件だけあり、`origin` が新しいリポジトリの URL を指していれば成功。ここから [`README.md`](../../README.md) の「新規プロジェクトへのコピー方法」2番以降（プレースホルダの書き換え等）へ進む。
+コミットが1件だけあり、`origin` が新しいリポジトリの URL を指していれば成功。ここから[「コピーした後にやること」](#コピーした後にやること)（プレースホルダの書き換え等）へ進む。
 
 ### A-2. gh CLI を使わない場合（ブラウザの「Use this template」ボタン）
 
@@ -192,4 +192,40 @@ git push -u origin main
 git log --oneline -1 --decorate
 ```
 
-`(HEAD -> main, origin/main)` と表示されれば成功。以降は [`README.md`](../../README.md) の 2 番以降へ進む。
+`(HEAD -> main, origin/main)` と表示されれば成功。以降は[「コピーした後にやること」](#コピーした後にやること)へ進む。
+
+## コピーした後にやること
+
+リポジトリを作った直後の中身はテンプレートのままなので、次の順で新しいプロジェクトのものへ置き換える。
+
+### 1. プレースホルダを書き換える
+
+| 場所 | 直すこと |
+|---|---|
+| `AGENTS.md` 冒頭 | `<PROJECT_NAME>` / `<PROJECT_SUMMARY>` |
+| `AGENTS.md`「ポイント」 | 技術スタック（`<FRONTEND>` / `<BACKEND>` / `<DATABASE>` / `<DEPLOY_TARGET>`）・起動方法 |
+| `package.json` | `name`、そのプロジェクトで使う依存とスクリプト |
+| `docs/todo/TODO.md` | `<PROJECT_NAME>` と最初のタスク |
+| `LICENSE` | 著作権者名（公開しないなら削除してよい） |
+
+### 2. 使わないものを削除する
+
+**削除したら `AGENTS.md` の構成表・`REVIEW.md` §3 の該当行も消す。**
+
+| 使わない場合 | 消すもの |
+|---|---|
+| 画面を持たない（CLI / API / バッチ） | `DESIGN.md`、`e2e/`、`playwright.config.ts`、`docs/skills/playwright-evidence-test.md` と 3 つの入口 |
+| DB を使わない | `prisma/`、`docs/prisma_operations.md` |
+| Prisma 以外の DB アクセスを使う | `prisma/AGENTS.md` を選んだ仕組みの規約へ書き換える |
+
+### 3. サンプルを消して、自分のコードを書き始める
+
+`src/example/` を削除する。`tools/` は権限ポリシーのずれ検出に使うので残す。
+
+### 4. 通ることを確認してコミットする
+
+```bash
+pnpm install && pnpm lint && pnpm typecheck && pnpm test
+```
+
+`git remote` は上記いずれの方法でも設定済みなので、そのままコミットして push できる。
