@@ -43,7 +43,8 @@
                         └ 入口: .claude/skills/ · .agents/skills/ · .github/prompts/
         ↓
 権限ポリシー          docs/agent_permissions.md（正本）
-                        └ 写し: .claude/settings.json · .vscode/settings.json · .codex/rules/
+                        ├ 写し: .claude/settings.json · .vscode/settings.json · .codex/rules/
+                        └ ずれ検出: tools/agent-permissions/（pnpm test で一緒に走る）
         ↓
 プロジェクト固有      docs/specs/（要件・設計）· docs/todo/（残タスク・履歴）
 ```
@@ -138,6 +139,7 @@ pnpm install && pnpm lint && pnpm typecheck && pnpm test
 ```
 pnpm install        # 依存パッケージの取得
 pnpm lint           # ESLint
+pnpm format         # Prettier で整形
 pnpm format:check   # Prettier チェック
 pnpm typecheck      # tsc --noEmit
 pnpm test           # Vitest（単体）

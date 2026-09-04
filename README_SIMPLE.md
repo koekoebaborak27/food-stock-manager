@@ -35,7 +35,7 @@
 pnpm install && pnpm lint && pnpm typecheck && pnpm test
 ```
 
-サンプルのテストが 4 件通れば準備完了です。サンプル（`src/example/`）は消してかまいません。
+すべて通れば準備完了です。サンプル（`src/example/`）の 4 件と、AI に許可・禁止したコマンドの設定が 4 ファイルでずれていないかを見るテスト（`tools/agent-permissions/`）がまとめて走ります。サンプルは消してかまいませんが、`tools/` は残してください。
 
 ## よく使うコマンド
 
