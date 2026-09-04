@@ -28,6 +28,7 @@
 | 実行基盤 | Google Cloud Run |
 | データベース | Supabase PostgreSQL |
 | 認証 | Google ログイン |
+| 通知の配信 | Cloud Scheduler + Cloud Run + Web Push（VAPID 鍵） |
 
 ---
 
