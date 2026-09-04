@@ -10,33 +10,40 @@
 #   prefix_rule(pattern=[...], decision="allow" | "prompt" | "forbidden")
 #   - pattern はコマンドの先頭トークン列（前方一致）。"deny" は無効値（構文エラー）。
 #   - 要素にリストを書くと「そのいずれか」を意味する（例: ["status", "diff"]）。
+#   - トークンは 1 つずつ厳密に一致する。"test" は "test:e2e" に一致しないため、
+#     サブコマンド付きの許可は 1 つずつ並べること。
 #   - allow = 確認なしでサンドボックス外実行を許可 / prompt = 常に確認 / forbidden = 実行拒否。
+#
+# 記載順について:
+#   "git push" のように、広い「確認」と狭い「禁止」が重なるコマンドがある。
+#   どちらが優先されるかはツールの実装に依存するため、
+#   **狭い禁止を先に、広い確認を最後に**書いて、どちらの解釈でも安全側に倒れるようにしている。
 
 # ---- 許可（確認なしで実行してよい） ----
 
 prefix_rule(pattern=["pnpm", "install"], decision="allow")
 prefix_rule(
-    pattern=["pnpm", ["lint", "format:check", "typecheck", "test"]],
+    pattern=[
+        "pnpm",
+        [
+            "lint",
+            "format",
+            "format:check",
+            "typecheck",
+            "build",
+            "test",
+            "test:watch",
+            "test:e2e",
+            "prisma:generate",
+        ],
+    ],
     decision="allow",
 )
 
 prefix_rule(pattern=["git", ["status", "diff", "log", "show", "branch"]], decision="allow")
-
-# フレームワークを導入したら次の行を有効にする（build を許可する）。
-# prefix_rule(pattern=["pnpm", "build"], decision="allow")
-
-# Prisma を採用する場合は次の行を有効にする。
-# prefix_rule(pattern=["pnpm", "prisma:generate"], decision="allow")
-
-# ローカル DB を Docker で動かす場合は次の 2 つを有効にする（Windows の区切り文字用に 2 行必要）。
-# prefix_rule(
-#     pattern=["docker", "compose", "-f", "docker/docker-compose.yml", ["up", "ps", "logs"]],
-#     decision="allow",
-# )
-# prefix_rule(
-#     pattern=["docker", "compose", "-f", "docker\docker-compose.yml", ["up", "ps", "logs"]],
-#     decision="allow",
-# )
+prefix_rule(pattern=["git", ["add", "commit"]], decision="allow")
+prefix_rule(pattern=["git", "checkout", "-b"], decision="allow")
+prefix_rule(pattern=["git", "switch", "-c"], decision="allow")
 
 # ---- 禁止（エージェントが単独で実行してはならない） ----
 
@@ -45,6 +52,14 @@ prefix_rule(pattern=["pnpm", "db:reset"], decision="forbidden")
 prefix_rule(pattern=["prisma", "migrate", "reset"], decision="forbidden")
 prefix_rule(pattern=["npx", "prisma", "migrate", "reset"], decision="forbidden")
 prefix_rule(pattern=["pnpm", ["exec", "dlx"], "prisma", "migrate", "reset"], decision="forbidden")
+
+prefix_rule(pattern=["supabase", "db", "reset"], decision="forbidden")
+prefix_rule(pattern=["npx", "supabase", "db", "reset"], decision="forbidden")
+prefix_rule(pattern=["pnpm", ["exec", "dlx"], "supabase", "db", "reset"], decision="forbidden")
+
+# 本番の Cloud Run サービスを差し替える・消す。
+prefix_rule(pattern=["gcloud", "run", "deploy"], decision="forbidden")
+prefix_rule(pattern=["gcloud", "run", "services", "delete"], decision="forbidden")
 
 prefix_rule(pattern=["git", "push", ["--force", "--force-with-lease", "-f"]], decision="forbidden")
 prefix_rule(pattern=["git", "reset", "--hard"], decision="forbidden")
@@ -55,3 +70,28 @@ prefix_rule(
     pattern=[["cat", "type", "more", "head", "tail", "Get-Content", "gc"], ".env"],
     decision="forbidden",
 )
+
+# ---- 確認（実行前に必ずユーザーへ聞く） ----
+# 上の禁止より広い範囲を指すものが多いため、意図的に最後へ置いている。
+
+# 依存関係を変える。
+prefix_rule(pattern=["pnpm", ["add", "remove"]], decision="prompt")
+
+# 任意のコマンドを実行できてしまうため、許可・禁止の判定をすり抜ける入口になる。
+prefix_rule(pattern=["pnpm", ["exec", "dlx"]], decision="prompt")
+prefix_rule(pattern=["npx"], decision="prompt")
+
+# 起動したまま終わらない。
+prefix_rule(pattern=["pnpm", ["dev", "start"]], decision="prompt")
+
+# DB のスキーマを書き換える。
+prefix_rule(pattern=["prisma", "migrate", "dev"], decision="prompt")
+prefix_rule(pattern=["prisma", "db", "push"], decision="prompt")
+prefix_rule(pattern=["supabase", "db", "push"], decision="prompt")
+prefix_rule(pattern=["supabase", "link"], decision="prompt")
+
+# リモートや外部に出る操作。
+prefix_rule(pattern=["git", "push"], decision="prompt")
+prefix_rule(pattern=["gh"], decision="prompt")
+prefix_rule(pattern=["docker", ["build", "push"]], decision="prompt")
+prefix_rule(pattern=["gcloud"], decision="prompt")

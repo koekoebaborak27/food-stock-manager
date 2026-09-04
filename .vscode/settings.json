@@ -1,27 +1,40 @@
 {
   // GitHub Copilot（Agent モード）のターミナル自動承認ポリシー。
   // 正本は docs/agent_permissions.md。内容を変えるときはまずそちらを直すこと。
-  // true  = 確認なしで実行、false = 常に手動承認（.claude/settings.json の allow / deny に対応）
+  // true  = 確認なしで実行、false = 常に手動承認。
+  // Copilot は 2 値しか持たないため、正本の「確認」と「禁止」はどちらも false になる。
+  //
+  // 注意: 値は「正規表現を書いた JSON 文字列」なので、正規表現の \ は \\ と 2 つ重ねる。
+  //       \b を 1 つの \ で書くと JSON ではバックスペース文字になり、ルールが一致しなくなる。
   "chat.tools.terminal.autoApprove": {
-    // --- 許可 ---
-    "/^pnpm (install|lint|format:check|typecheck)\b/": true,
-    "/^pnpm test(:[\w:-]+)?\b/": true,
-    "/^git (status|diff|log|show|branch)\b/": true,
+    // --- 許可（確認なしで実行してよい） ---
+    "/^pnpm (install|lint|format|format:check|typecheck|build)\\b/": true,
+    "/^pnpm test(:[\\w:-]+)?\\b/": true,
+    "/^pnpm prisma:generate\\b/": true,
+    "/^git (status|diff|log|show|branch)\\b/": true,
+    "/^git (add|commit)\\b/": true,
+    "/^git (checkout -b|switch -c)\\b/": true,
 
-    // フレームワークを導入したら次の行を有効にする（build を許可する）。
-    // "/^pnpm build\b/": true,
-    // ローカル DB を Docker で動かす場合は次の行を有効にする。
-    // "/^docker compose -f docker\/docker-compose\.yml (up|ps|logs)\b/": true,
-    // Prisma を採用する場合は次の行を有効にする。
-    // "/^pnpm prisma:generate\b/": true,
+    // --- 確認（実行前に必ずユーザーへ聞く） ---
+    "/^pnpm (add|remove)\\b/": false,
+    "/^(pnpm (exec|dlx)|npx)\\b/": false,
+    "/^pnpm (dev|start)\\b/": false,
+    "/^git push\\b/": false,
+    "/^gh\\b/": false,
+    "/prisma (migrate dev|db push)\\b/": false,
+    "/supabase (db push|link)\\b/": false,
+    "/^docker (build|push)\\b/": false,
 
-    // --- 禁止（必ず人間の確認を挟む） ---
-    "/^pnpm db:reset\b/": false,
-    "/prisma migrate reset\b/": false,
-    "/git push\b.*(--force|-f)\b/": false,
-    "/git reset\b.*--hard\b/": false,
+    // --- 禁止（必ず人間の確認を挟み、人間が拒否する） ---
+    "/^pnpm db:reset\\b/": false,
+    "/prisma migrate reset\\b/": false,
+    "/supabase db reset\\b/": false,
+    "/gcloud run (deploy|services delete)\\b/": false,
+    "/^gcloud\\b/": false,
+    "/git push\\b.*(--force|-f)\\b/": false,
+    "/git reset\\b.*--hard\\b/": false,
     // .env の中身をターミナル経由で読み出す操作（cat / type / Get-Content など）。
     // .env.example は共有してよいので除外する。
-    "/(^|[\s\/\\])\.env(?!\.example)(\.|$|\s)/": false
+    "/(^|[\\s\\/\\\\])\\.env(?!\\.example)(\\.|$|\\s)/": false
   }
 }

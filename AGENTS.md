@@ -38,6 +38,7 @@
 | `.claude/` | Claude Code が読むスキル（`skills/<name>/SKILL.md`）+ サブエージェント（`agents/<name>.md`）+ 権限設定（`settings.json`） |
 | `.vscode/` | 推奨拡張機能 + Copilot の権限設定（`settings.json`） |
 | `prisma/` | （Prisma を採用する場合）スキーマ・マイグレーション・seed。規約は `@prisma/AGENTS.md`。使わないならフォルダごと削除する |
+| `tools/` | アプリ本体ではない、リポジトリの決まりごとを検査する仕組み。現在は権限ポリシーの 4 ファイルがずれていないかを見る `agent-permissions/`（`pnpm test` で走る） |
 
 ## ポイント
 
@@ -59,7 +60,7 @@
 - **コードにはコメントを書く。** 関数・コンポーネント・エクスポートする定数は、定義の直前に「何をするものか」を必ず書く。関数の中でも、意図が読み取りにくい分岐・条件・値には理由を添える。書き方は次の 2 点を守る。
   - **1 文目で端的に何をするかを書き、2 文目以降で詳細や「何のために」を補う。** 例: `// リクエストで渡された検索条件を使いやすく変換する。` → `// 文字列のまま渡ってくるので、数値に変換する・値が入っていない項目には初期値を入れる、等を行う。`
   - **専門用語やカタカナ語に頼らず、平易な日本語で書く。** 「フォールバック」「ファサード」「楽観ロック」等はそのまま使わず、実際の動作を説明する言葉へ置き換える（例: 「代わりに分類一覧の一番先頭を選択状態にする」）。
-- **エージェントが確認なしで実行してよいコマンドと、単独で実行してはならない操作は `@docs/agent_permissions.md` が正本。** `.env` の読み取り、`git push --force` / `git reset --hard`、およびデータベースを作り直すコマンド（`pnpm db:reset` / `prisma migrate reset` 等）は設定ファイルでも禁止しているが、強制には穴があるため**規約としても実行しない**。
+- **エージェントが確認なしで実行してよいコマンドと、単独で実行してはならない操作は `@docs/agent_permissions.md` が正本。** `.env` の読み取り、`git push --force` / `git reset --hard`、データベースを作り直すコマンド（`pnpm db:reset` / `prisma migrate reset` / `supabase db reset` 等）、および本番へ出るコマンド（`gcloud run deploy` / `gcloud run services delete`）は設定ファイルでも禁止しているが、強制には穴があるため**規約としても実行しない**。
 - `docs/todo/TODO.md` と `README.md` / `README_SIMPLE.md` の更新は、`@docs/skills/update-todo.md` の手順に従う。
 - **ドキュメントを分割・移動したら、参照元のリンクを必ず張り替える。** 移動先が 1 階層深くなる場合は本文中の相対リンク（`../`）も繰り上げる。作業後にリポジトリ全体の `.md` を走査してリンク切れが無いことを確認する。
 
@@ -70,10 +71,12 @@
 ```
 pnpm install        # 依存パッケージの取得
 pnpm lint           # ESLint
+pnpm format         # Prettier で整形
 pnpm format:check   # Prettier チェック
 pnpm typecheck      # tsc --noEmit
 pnpm test           # Vitest（単体）
 pnpm test:watch     # Vitest（監視）
+pnpm test:e2e       # Playwright（画面操作）
 ```
 
 フレームワークを導入したら `dev` / `build` / `start` などをここへ追記する。

@@ -1,0 +1,373 @@
+{
+  "$comment": "docs/agent_permissions.md（正本）の表を機械可読にしたもの。1 エントリが表の 1 コマンドに対応する。正本の表を直したらここも直すこと。検査するのは tools/agent-permissions/sync.test.ts。",
+  "files": {
+    "policy": "docs/agent_permissions.md",
+    "claude": ".claude/settings.json",
+    "vscode": ".vscode/settings.json",
+    "codex": ".codex/rules/project.rules"
+  },
+  "entries": [
+    {
+      "id": "pnpm-install",
+      "decision": "allow",
+      "policy": "`pnpm install`",
+      "claude": "Bash(pnpm install)",
+      "vscode": "/^pnpm (install|lint|format|format:check|typecheck|build)\\b/",
+      "codex": "\"pnpm\",\"install\""
+    },
+    {
+      "id": "pnpm-lint",
+      "decision": "allow",
+      "policy": "`pnpm lint`",
+      "claude": "Bash(pnpm lint:*)",
+      "vscode": "/^pnpm (install|lint|format|format:check|typecheck|build)\\b/",
+      "codex": "\"lint\""
+    },
+    {
+      "id": "pnpm-format",
+      "decision": "allow",
+      "policy": "`pnpm format`",
+      "claude": "Bash(pnpm format)",
+      "vscode": "/^pnpm (install|lint|format|format:check|typecheck|build)\\b/",
+      "codex": "\"format\""
+    },
+    {
+      "id": "pnpm-format-check",
+      "decision": "allow",
+      "policy": "`pnpm format:check`",
+      "claude": "Bash(pnpm format:check)",
+      "vscode": "/^pnpm (install|lint|format|format:check|typecheck|build)\\b/",
+      "codex": "\"format:check\""
+    },
+    {
+      "id": "pnpm-typecheck",
+      "decision": "allow",
+      "policy": "`pnpm typecheck`",
+      "claude": "Bash(pnpm typecheck)",
+      "vscode": "/^pnpm (install|lint|format|format:check|typecheck|build)\\b/",
+      "codex": "\"typecheck\""
+    },
+    {
+      "id": "pnpm-build",
+      "decision": "allow",
+      "policy": "`pnpm build`",
+      "claude": "Bash(pnpm build:*)",
+      "vscode": "/^pnpm (install|lint|format|format:check|typecheck|build)\\b/",
+      "codex": "\"build\""
+    },
+    {
+      "id": "pnpm-test",
+      "decision": "allow",
+      "policy": "`pnpm test`",
+      "claude": "Bash(pnpm test:*)",
+      "vscode": "/^pnpm test(:[\\w:-]+)?\\b/",
+      "codex": "\"test\""
+    },
+    {
+      "id": "pnpm-test-e2e",
+      "decision": "allow",
+      "policy": "`pnpm test:e2e`",
+      "claude": "Bash(pnpm test:*)",
+      "vscode": "/^pnpm test(:[\\w:-]+)?\\b/",
+      "codex": "\"test:e2e\""
+    },
+    {
+      "id": "pnpm-prisma-generate",
+      "decision": "allow",
+      "policy": "`pnpm prisma:generate`",
+      "claude": "Bash(pnpm prisma:generate)",
+      "vscode": "/^pnpm prisma:generate\\b/",
+      "codex": "\"prisma:generate\""
+    },
+    {
+      "id": "git-status",
+      "decision": "allow",
+      "policy": "`git status`",
+      "claude": "Bash(git status:*)",
+      "vscode": "/^git (status|diff|log|show|branch)\\b/",
+      "codex": "\"git\",[\"status\",\"diff\",\"log\",\"show\",\"branch\"]"
+    },
+    {
+      "id": "git-diff",
+      "decision": "allow",
+      "policy": "`git diff`",
+      "claude": "Bash(git diff:*)",
+      "vscode": "/^git (status|diff|log|show|branch)\\b/",
+      "codex": "\"git\",[\"status\",\"diff\",\"log\",\"show\",\"branch\"]"
+    },
+    {
+      "id": "git-log",
+      "decision": "allow",
+      "policy": "`git log`",
+      "claude": "Bash(git log:*)",
+      "vscode": "/^git (status|diff|log|show|branch)\\b/",
+      "codex": "\"git\",[\"status\",\"diff\",\"log\",\"show\",\"branch\"]"
+    },
+    {
+      "id": "git-show",
+      "decision": "allow",
+      "policy": "`git show`",
+      "claude": "Bash(git show:*)",
+      "vscode": "/^git (status|diff|log|show|branch)\\b/",
+      "codex": "\"git\",[\"status\",\"diff\",\"log\",\"show\",\"branch\"]"
+    },
+    {
+      "id": "git-branch",
+      "decision": "allow",
+      "policy": "`git branch`",
+      "claude": "Bash(git branch:*)",
+      "vscode": "/^git (status|diff|log|show|branch)\\b/",
+      "codex": "\"git\",[\"status\",\"diff\",\"log\",\"show\",\"branch\"]"
+    },
+    {
+      "id": "git-add",
+      "decision": "allow",
+      "policy": "`git add`",
+      "claude": "Bash(git add:*)",
+      "vscode": "/^git (add|commit)\\b/",
+      "codex": "\"git\",[\"add\",\"commit\"]"
+    },
+    {
+      "id": "git-commit",
+      "decision": "allow",
+      "policy": "`git commit`",
+      "claude": "Bash(git commit:*)",
+      "vscode": "/^git (add|commit)\\b/",
+      "codex": "\"git\",[\"add\",\"commit\"]"
+    },
+    {
+      "id": "git-checkout-b",
+      "decision": "allow",
+      "policy": "`git checkout -b`",
+      "claude": "Bash(git checkout -b:*)",
+      "vscode": "/^git (checkout -b|switch -c)\\b/",
+      "codex": "\"git\",\"checkout\",\"-b\""
+    },
+    {
+      "id": "git-switch-c",
+      "decision": "allow",
+      "policy": "`git switch -c`",
+      "claude": "Bash(git switch -c:*)",
+      "vscode": "/^git (checkout -b|switch -c)\\b/",
+      "codex": "\"git\",\"switch\",\"-c\""
+    },
+
+    {
+      "id": "pnpm-add",
+      "decision": "ask",
+      "policy": "`pnpm add`",
+      "claude": "Bash(pnpm add:*)",
+      "vscode": "/^pnpm (add|remove)\\b/",
+      "codex": "\"pnpm\",[\"add\",\"remove\"]"
+    },
+    {
+      "id": "pnpm-remove",
+      "decision": "ask",
+      "policy": "`pnpm remove`",
+      "claude": "Bash(pnpm remove:*)",
+      "vscode": "/^pnpm (add|remove)\\b/",
+      "codex": "\"pnpm\",[\"add\",\"remove\"]"
+    },
+    {
+      "id": "pnpm-exec",
+      "decision": "ask",
+      "policy": "`pnpm exec`",
+      "claude": "Bash(pnpm exec:*)",
+      "vscode": "/^(pnpm (exec|dlx)|npx)\\b/",
+      "codex": "\"pnpm\",[\"exec\",\"dlx\"]"
+    },
+    {
+      "id": "pnpm-dlx",
+      "decision": "ask",
+      "policy": "`pnpm dlx`",
+      "claude": "Bash(pnpm dlx:*)",
+      "vscode": "/^(pnpm (exec|dlx)|npx)\\b/",
+      "codex": "\"pnpm\",[\"exec\",\"dlx\"]"
+    },
+    {
+      "id": "npx",
+      "decision": "ask",
+      "policy": "`npx`",
+      "claude": "Bash(npx:*)",
+      "vscode": "/^(pnpm (exec|dlx)|npx)\\b/",
+      "codex": "[\"npx\"]"
+    },
+    {
+      "id": "pnpm-dev",
+      "decision": "ask",
+      "policy": "`pnpm dev`",
+      "claude": "Bash(pnpm dev:*)",
+      "vscode": "/^pnpm (dev|start)\\b/",
+      "codex": "\"pnpm\",[\"dev\",\"start\"]"
+    },
+    {
+      "id": "pnpm-start",
+      "decision": "ask",
+      "policy": "`pnpm start`",
+      "claude": "Bash(pnpm start:*)",
+      "vscode": "/^pnpm (dev|start)\\b/",
+      "codex": "\"pnpm\",[\"dev\",\"start\"]"
+    },
+    {
+      "id": "git-push",
+      "decision": "ask",
+      "policy": "`git push`",
+      "claude": "Bash(git push:*)",
+      "vscode": "/^git push\\b/",
+      "codex": "\"git\",\"push\""
+    },
+    {
+      "id": "gh",
+      "decision": "ask",
+      "policy": "`gh pr create`",
+      "claude": "Bash(gh:*)",
+      "vscode": "/^gh\\b/",
+      "codex": "[\"gh\"]"
+    },
+    {
+      "id": "prisma-migrate-dev",
+      "decision": "ask",
+      "policy": "`prisma migrate dev`",
+      "claude": "Bash(prisma migrate dev:*)",
+      "vscode": "/prisma (migrate dev|db push)\\b/",
+      "codex": "\"prisma\",\"migrate\",\"dev\""
+    },
+    {
+      "id": "prisma-db-push",
+      "decision": "ask",
+      "policy": "`prisma db push`",
+      "claude": "Bash(prisma db push:*)",
+      "vscode": "/prisma (migrate dev|db push)\\b/",
+      "codex": "\"prisma\",\"db\",\"push\""
+    },
+    {
+      "id": "supabase-db-push",
+      "decision": "ask",
+      "policy": "`supabase db push`",
+      "claude": "Bash(supabase db push:*)",
+      "vscode": "/supabase (db push|link)\\b/",
+      "codex": "\"supabase\",\"db\",\"push\""
+    },
+    {
+      "id": "supabase-link",
+      "decision": "ask",
+      "policy": "`supabase link`",
+      "claude": "Bash(supabase link:*)",
+      "vscode": "/supabase (db push|link)\\b/",
+      "codex": "\"supabase\",\"link\""
+    },
+    {
+      "id": "docker-build",
+      "decision": "ask",
+      "policy": "`docker build`",
+      "claude": "Bash(docker build:*)",
+      "vscode": "/^docker (build|push)\\b/",
+      "codex": "\"docker\",[\"build\",\"push\"]"
+    },
+    {
+      "id": "docker-push",
+      "decision": "ask",
+      "policy": "`docker push`",
+      "claude": "Bash(docker push:*)",
+      "vscode": "/^docker (build|push)\\b/",
+      "codex": "\"docker\",[\"build\",\"push\"]"
+    },
+    {
+      "id": "gcloud",
+      "decision": "ask",
+      "policy": "`gcloud`（下の禁止に挙げたものを除く）",
+      "claude": "Bash(gcloud:*)",
+      "vscode": "/^gcloud\\b/",
+      "codex": "[\"gcloud\"]"
+    },
+
+    {
+      "id": "env-read",
+      "decision": "deny",
+      "policy": "`.env` および `.env.*.local` の読み取り",
+      "claude": "Read(.env)",
+      "vscode": "/(^|[\\s\\/\\\\])\\.env(?!\\.example)(\\.|$|\\s)/",
+      "codex": "\".env\""
+    },
+    {
+      "id": "env-read-cat",
+      "decision": "deny",
+      "policy": "`.env` および `.env.*.local` の読み取り",
+      "claude": "Bash(cat .env:*)",
+      "vscode": "/(^|[\\s\\/\\\\])\\.env(?!\\.example)(\\.|$|\\s)/",
+      "codex": "\"cat\",\"type\",\"more\",\"head\",\"tail\",\"Get-Content\",\"gc\""
+    },
+    {
+      "id": "pnpm-db-reset",
+      "decision": "deny",
+      "policy": "`pnpm db:reset*`",
+      "claude": "Bash(pnpm db:reset:*)",
+      "vscode": "/^pnpm db:reset\\b/",
+      "codex": "\"pnpm\",\"db:reset\""
+    },
+    {
+      "id": "prisma-migrate-reset",
+      "decision": "deny",
+      "policy": "`prisma migrate reset*`",
+      "claude": "Bash(prisma migrate reset:*)",
+      "vscode": "/prisma migrate reset\\b/",
+      "codex": "\"prisma\",\"migrate\",\"reset\""
+    },
+    {
+      "id": "prisma-migrate-reset-npx",
+      "decision": "deny",
+      "policy": "`prisma migrate reset*`",
+      "claude": "Bash(npx prisma migrate reset:*)",
+      "vscode": "/prisma migrate reset\\b/",
+      "codex": "\"npx\",\"prisma\",\"migrate\",\"reset\""
+    },
+    {
+      "id": "supabase-db-reset",
+      "decision": "deny",
+      "policy": "`supabase db reset*`",
+      "claude": "Bash(supabase db reset:*)",
+      "vscode": "/supabase db reset\\b/",
+      "codex": "\"supabase\",\"db\",\"reset\""
+    },
+    {
+      "id": "gcloud-run-deploy",
+      "decision": "deny",
+      "policy": "`gcloud run deploy*`",
+      "claude": "Bash(gcloud run deploy:*)",
+      "vscode": "/gcloud run (deploy|services delete)\\b/",
+      "codex": "\"gcloud\",\"run\",\"deploy\""
+    },
+    {
+      "id": "gcloud-run-services-delete",
+      "decision": "deny",
+      "policy": "`gcloud run services delete*`",
+      "claude": "Bash(gcloud run services delete:*)",
+      "vscode": "/gcloud run (deploy|services delete)\\b/",
+      "codex": "\"gcloud\",\"run\",\"services\",\"delete\""
+    },
+    {
+      "id": "git-push-force",
+      "decision": "deny",
+      "policy": "`git push --force*`",
+      "claude": "Bash(git push --force:*)",
+      "vscode": "/git push\\b.*(--force|-f)\\b/",
+      "codex": "\"git\",\"push\",[\"--force\",\"--force-with-lease\",\"-f\"]"
+    },
+    {
+      "id": "git-push-force-with-lease",
+      "decision": "deny",
+      "policy": "`git push --force-with-lease*`",
+      "claude": "Bash(git push --force-with-lease:*)",
+      "vscode": "/git push\\b.*(--force|-f)\\b/",
+      "codex": "\"git\",\"push\",[\"--force\",\"--force-with-lease\",\"-f\"]"
+    },
+    {
+      "id": "git-reset-hard",
+      "decision": "deny",
+      "policy": "`git reset --hard*`",
+      "claude": "Bash(git reset --hard:*)",
+      "vscode": "/git reset\\b.*--hard\\b/",
+      "codex": "\"git\",\"reset\",\"--hard\""
+    }
+  ]
+}
