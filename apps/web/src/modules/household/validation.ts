@@ -1,16 +1,9 @@
-const MAX_NAME_LENGTH = 20;
+import { validateName } from "../../shared/validation/name";
 
 // 家族グループの名前を確かめる（docs/specs/02_basic-design/10_認証と家族グループ/12_家族グループをつくる.md）。
 // 問題なければnull、問題があれば入力欄の下に出す文言を返す。
 export function validateHouseholdName(name: string): string | null {
-  const trimmed = name.trim();
-  if (trimmed.length === 0) {
-    return "入力してください";
-  }
-  if (trimmed.length > MAX_NAME_LENGTH) {
-    return `${MAX_NAME_LENGTH}文字以内で入力してください`;
-  }
-  return null;
+  return validateName(name);
 }
 
 // 招待コードの入力を確かめる。形式チェックはしない

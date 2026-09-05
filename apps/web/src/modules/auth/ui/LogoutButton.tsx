@@ -7,5 +7,13 @@ export function LogoutButton() {
     window.location.href = "/login";
   }
 
-  return <button onClick={() => void handleClick()}>ログアウト</button>;
+  return (
+    <button
+      type="button"
+      className="h-11 w-full rounded-full border border-input bg-background px-4 text-sm font-medium"
+      onClick={() => void handleClick()}
+    >
+      ログアウト
+    </button>
+  );
 }
