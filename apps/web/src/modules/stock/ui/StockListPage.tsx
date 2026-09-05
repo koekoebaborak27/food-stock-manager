@@ -16,6 +16,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { clientApiFetch } from "@/shared/api/client-fetch";
+import { showSuccessToast } from "@/shared/ui/toast";
+import { consumePendingSaveToast } from "../save-toast";
 import {
   buildStockListQuery,
   formatQuantity,
@@ -54,6 +56,14 @@ export function StockListPage({ householdName }: { householdName: string }) {
     void loadStocks();
     // loadStocksは状態を読ませず、ここで指定した条件を引数として受け取る。
   }, [storageType, keyword, sort, urgentOnly]);
+
+  // 登録・編集画面からの保存直後だけ、この画面で結果の帯を出す。
+  useEffect(() => {
+    const message = consumePendingSaveToast();
+    if (message) {
+      showSuccessToast(message);
+    }
+  }, []);
 
   // APIの成功・失敗を一覧の表示状態へ反映する。
   async function loadStocks(): Promise<void> {
@@ -198,15 +208,15 @@ export function StockListPage({ householdName }: { householdName: string }) {
         ) : null}
       </section>
 
-      <button
-        type="button"
+      <Link
+        href="/stocks/new"
         aria-label="食品を追加する"
         className="fixed right-5 bottom-20 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
       >
         <span aria-hidden="true" className="text-3xl leading-none">
           +
         </span>
-      </button>
+      </Link>
       <nav className="fixed right-0 bottom-0 left-0 mx-auto flex h-16 max-w-md items-center justify-around border-t bg-card text-xs">
         <span className="font-bold text-primary">常備食</span>
         <span className="text-muted-foreground">買い物</span>

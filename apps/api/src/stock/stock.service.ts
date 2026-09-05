@@ -1,8 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import type { Prisma, StorageType, UnitType } from "@prisma/client";
-import { Errors } from "../common/errors/app-error";
+import { HttpStatus, Injectable } from "@nestjs/common";
+import type { Membership, Prisma, StorageType, UnitType } from "@prisma/client";
+import { AppError, Errors } from "../common/errors/app-error";
 import { PrismaService } from "../prisma/prisma.service";
-import type { StockListQuery, StockSort } from "./validation";
+import type { StockInput, StockListQuery, StockSort } from "./validation";
 
 export interface StockListItem {
   id: string;
@@ -16,6 +16,10 @@ export interface StockListItem {
   updatedAt: Date;
 }
 
+export interface StockDetail extends StockListItem {
+  memo: string | null;
+}
+
 // 常備食を家族グループごとに取得する。削除済みと消費済みの食品は一覧から常に除く。
 @Injectable()
 export class StockService {
@@ -23,10 +27,7 @@ export class StockService {
 
   // ログインしている利用者が所属する家族グループの常備食一覧を返す。
   async list(userId: string, query: StockListQuery): Promise<{ items: StockListItem[] }> {
-    const membership = await this.prisma.membership.findUnique({ where: { userId } });
-    if (!membership) {
-      throw Errors.noHousehold();
-    }
+    const membership = await this.getMembership(userId);
 
     const where: Prisma.StockWhereInput = {
       householdId: membership.householdId,
@@ -39,6 +40,101 @@ export class StockService {
     const stocks = await this.prisma.stock.findMany({ where, orderBy: createOrderBy(query.sort) });
     return { items: stocks.map(toListItem) };
   }
+
+  // 常備食1件を、編集画面が読む形で返す。他の家族グループのものは404にする。
+  async get(userId: string, id: string): Promise<StockDetail> {
+    const membership = await this.getMembership(userId);
+    const stock = await this.prisma.stock.findFirst({
+      where: { id, householdId: membership.householdId, deletedAt: null },
+    });
+    if (!stock) {
+      throw stockNotFound();
+    }
+    return toDetail(stock);
+  }
+
+  // 常備食を登録する。同じ家族グループに同名の未削除・未消費の食品があるかも合わせて返す。
+  async create(
+    userId: string,
+    input: StockInput,
+  ): Promise<StockDetail & { duplicateName: boolean }> {
+    const membership = await this.getMembership(userId);
+    const duplicate = await this.prisma.stock.findFirst({
+      where: {
+        householdId: membership.householdId,
+        deletedAt: null,
+        consumedAt: null,
+        name: input.name,
+      },
+      select: { id: true },
+    });
+    const created = await this.prisma.stock.create({
+      data: {
+        householdId: membership.householdId,
+        name: input.name,
+        storageType: input.storageType,
+        quantity: input.quantity,
+        unit: input.unit,
+        expiresOn: input.expiresOn ? new Date(input.expiresOn) : null,
+        isHomemade: input.isHomemade,
+        memo: input.memo,
+        createdById: userId,
+        updatedById: userId,
+      },
+    });
+    return { ...toDetail(created), duplicateName: duplicate !== null };
+  }
+
+  // 常備食を編集する。画面が読んだupdatedAtと食い違えば更新せずSTOCK_UPDATE_CONFLICTを返す。
+  async update(
+    userId: string,
+    id: string,
+    input: StockInput,
+    updatedAt: Date,
+  ): Promise<StockDetail> {
+    const membership = await this.getMembership(userId);
+    const result = await this.prisma.stock.updateMany({
+      where: { id, householdId: membership.householdId, deletedAt: null, updatedAt },
+      data: {
+        name: input.name,
+        storageType: input.storageType,
+        quantity: input.quantity,
+        unit: input.unit,
+        expiresOn: input.expiresOn ? new Date(input.expiresOn) : null,
+        isHomemade: input.isHomemade,
+        memo: input.memo,
+        updatedById: userId,
+      },
+    });
+
+    if (result.count === 0) {
+      const existing = await this.prisma.stock.findFirst({
+        where: { id, householdId: membership.householdId, deletedAt: null },
+      });
+      if (!existing) {
+        throw stockNotFound();
+      }
+      throw new AppError("STOCK_UPDATE_CONFLICT", HttpStatus.CONFLICT);
+    }
+
+    const updated = await this.prisma.stock.findUniqueOrThrow({ where: { id } });
+    return toDetail(updated);
+  }
+
+  // ログインしている利用者が所属する家族グループを引く。未所属ならNO_HOUSEHOLDにする。
+  private async getMembership(userId: string): Promise<Membership> {
+    const membership = await this.prisma.membership.findUnique({ where: { userId } });
+    if (!membership) {
+      throw Errors.noHousehold();
+    }
+    return membership;
+  }
+}
+
+// 常備食が見つからないときの失敗。存在しない・削除済み・他の家族グループのものを区別しない
+// （02_API共通.md 4）。
+function stockNotFound(): AppError {
+  return new AppError("STOCK_NOT_FOUND", HttpStatus.NOT_FOUND);
 }
 
 // 今日・明日が期限の食品だけを選ぶ条件を、日本時間の日付で作る。
@@ -81,8 +177,7 @@ function toDateString(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
-// 一覧画面に必要な項目だけをAPI応答へ変換する。
-function toListItem(stock: {
+interface StockRow {
   id: string;
   name: string;
   storageType: StorageType;
@@ -90,11 +185,27 @@ function toListItem(stock: {
   unit: UnitType | null;
   expiresOn: Date | null;
   isHomemade: boolean;
+  memo: string | null;
   createdAt: Date;
   updatedAt: Date;
-}): StockListItem {
+}
+
+// 一覧画面に必要な項目だけをAPI応答へ変換する。householdIdなど内部の列は含めない。
+function toListItem(stock: StockRow): StockListItem {
   return {
-    ...stock,
+    id: stock.id,
+    name: stock.name,
+    storageType: stock.storageType,
+    quantity: stock.quantity,
+    unit: stock.unit,
     expiresOn: stock.expiresOn ? toDateString(stock.expiresOn) : null,
+    isHomemade: stock.isHomemade,
+    createdAt: stock.createdAt,
+    updatedAt: stock.updatedAt,
   };
+}
+
+// 登録・編集画面に必要なメモも含めてAPI応答へ変換する。
+function toDetail(stock: StockRow): StockDetail {
+  return { ...toListItem(stock), memo: stock.memo };
 }
