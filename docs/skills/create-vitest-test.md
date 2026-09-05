@@ -23,7 +23,7 @@
 
 | 項目 | 必須 | 備考 |
 |---|---|---|
-| 対象ファイル | ○ | 例: `src/modules/master/service.ts` |
+| 対象ファイル | ○ | 例: `apps/web/src/modules/master/service.ts` |
 | 関連する単体テスト仕様書 | △ | `docs/test/unit/spec/` 配下にあれば渡す（`create-unit-test-spec` スキルの成果物。あればテストケースの元ネタにする） |
 | DB統合テストが必要か | △ | 不明なら手順1で `TESTING.md`「2. レイヤーごとの濃淡」表から判定する |
 

@@ -25,12 +25,16 @@
 pnpm install && pnpm lint && pnpm typecheck && pnpm test
 ```
 
-すべて通れば準備完了です。いまはサンプル（`src/example/`）の 4 件と、AI に許可・禁止したコマンドの設定が 4 ファイルでずれていないかを見るテスト（`tools/agent-permissions/`）が走ります。サンプルは本物のコードを書き始めるときに消してかまいませんが、`tools/` は残してください。
+すべて通れば準備完了です。いまはサンプル（`apps/web/src/example/`）の 4 件と、AI に許可・禁止したコマンドの設定が 4 ファイルでずれていないかを見るテスト（`tools/agent-permissions/`）が走ります。サンプルは本物のコードを書き始めるときに消してかまいませんが、`tools/` は残してください。
+
+画面と API は別々のサーバーなので、動かすときは**ターミナルを 2 つ開いて** `pnpm dev:web` と `pnpm dev:api` をそれぞれ実行します。VS Code で 1 行ずつ止めながら動かす方法は [`README.md`](README.md#vs-code-で-1-行ずつ止めながら動かす) にあります。
 
 ## よく使うコマンド
 
 ```
 pnpm install        # 必要な部品をそろえる
+pnpm dev:web        # 画面を起動する。3000 番
+pnpm dev:api        # API を起動する。3001 番
 pnpm lint           # 書き方のチェック
 pnpm typecheck      # 型のチェック
 pnpm test           # テストの実行

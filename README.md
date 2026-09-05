@@ -10,7 +10,7 @@
 
 ## 状況
 
-**要件定義が完了し、基本設計に着手しました。実装は未着手です。**
+**要件定義と基本設計が完了し、実装の土台を作ったところです。機能の実装はこれからです。**
 
 | 種類 | 場所 |
 |---|---|
@@ -30,6 +30,13 @@
 | 認証 | Google ログイン |
 | 通知の配信 | Cloud Scheduler + Cloud Run + Web Push（VAPID 鍵） |
 
+画面と API は pnpm workspace で別々のパッケージに分けています。求める設定が食い違う（画面側は ESM、API 側は CommonJS で動かす）ためです。
+
+| パッケージ | 中身 |
+|---|---|
+| [`apps/web/`](apps/web/AGENTS.md) | 画面（Next.js）。3000 番で起動 |
+| `apps/api/` | API（NestJS）。3001 番で起動 |
+
 ---
 
 以下は、このリポジトリが使っている「AI 向けルールの置き方」の説明です。ベースにした AI 開発テンプレート（[ai-dev-template](https://github.com/koekoebaborak27/ai-dev-template)）由来の仕組みで、このプロジェクトでもそのまま使っています。テンプレートから新しいプロジェクトを作る手順は [`docs/development/本テンプレートPJをコピーする方法.md`](docs/development/本テンプレートPJをコピーする方法.md) にまとめてあります（このプロジェクトでは実施済み）。
@@ -39,7 +46,7 @@
 ```
 各AI専用の入口        CLAUDE.md / .github/copilot-instructions.md /（Codex は AGENTS.md を直読み）
         ↓
-共通ルール            AGENTS.md（正本）+ DESIGN.md / REVIEW.md / TESTING.md / src/AGENTS.md
+共通ルール            AGENTS.md（正本）+ DESIGN.md / REVIEW.md / TESTING.md / apps/web/AGENTS.md
         ↓
 共通スキル            docs/skills/<name>.md（正本）
                         └ 入口: .claude/skills/ · .agents/skills/ · .github/prompts/
@@ -82,7 +89,7 @@
 | UI / デザイン規約 | [`DESIGN.md`](DESIGN.md) |
 | コミット / PR のレビュー観点 | [`REVIEW.md`](REVIEW.md) |
 | テストの書き方 | [`TESTING.md`](TESTING.md) |
-| `src/` の構造・依存方向 | [`src/AGENTS.md`](src/AGENTS.md) |
+| `src/` の構造・依存方向 | [`apps/web/AGENTS.md`](apps/web/AGENTS.md) |
 | 許可・禁止コマンド | [`docs/agent_permissions.md`](docs/agent_permissions.md)（**正本**。3 つの設定ファイルへ写す） |
 | 繰り返す作業の手順 | [`docs/skills/<name>.md`](docs/skills/README.md)（**正本**。入口 3 つは薄いまま） |
 | 要件・設計 | [`docs/specs/`](docs/specs/README.md) |
@@ -111,6 +118,9 @@
 
 ```
 pnpm install        # 依存パッケージの取得
+pnpm dev:web        # 画面（Next.js）を開発モードで起動。3000 番
+pnpm dev:api        # API（NestJS）を開発モードで起動。3001 番
+pnpm build          # web と api の両方をビルド
 pnpm lint           # ESLint
 pnpm format         # Prettier で整形
 pnpm format:check   # Prettier チェック
@@ -118,6 +128,29 @@ pnpm typecheck      # tsc --noEmit
 pnpm test           # Vitest（単体）
 pnpm test:e2e       # Playwright（画面操作）
 ```
+
+画面と API は別々のサーバーなので、**ターミナルを 2 つ開いて `pnpm dev:web` と `pnpm dev:api` をそれぞれ実行**します。片方のパッケージだけを対象にしたいときは `pnpm --filter web <コマンド>` / `pnpm --filter api <コマンド>` を使います。
+
+依存パッケージを足すときは、入れる先を間違えないよう `--filter` で指定します。詳しくは [`docs/todo/notes/開発環境.md`](docs/todo/notes/開発環境.md)。
+
+```
+pnpm --filter web add <パッケージ名>     # 画面側だけで使うもの
+pnpm --filter api add <パッケージ名>     # API 側だけで使うもの
+pnpm add -D -w <パッケージ名>            # 両方で使う開発ツール
+```
+
+## VS Code で 1 行ずつ止めながら動かす
+
+左サイドバーの**実行とデバッグ**から、次のいずれかを選んで起動します（設定は [`.vscode/launch.json`](.vscode/launch.json)）。
+
+| 選ぶもの | 何が起きるか |
+|---|---|
+| web と api を同時に動かす | 画面と API の両方が、途中で止められる状態で起動する |
+| api（NestJS）を止めながら動かす | API だけ起動する |
+| web（Next.js）のサーバー側を止めながら動かす | 画面のうち、サーバー側で動く処理だけ止められる |
+| web（Next.js）のブラウザ側を止めながら動かす | Chrome が開き、ブラウザ上で動く処理を止められる |
+
+止めたい行の**行番号の左側をクリック**すると赤い丸（ブレークポイント）が付き、そこまで処理が進むと止まって変数の中身を見られます。
 
 ## ライセンス
 

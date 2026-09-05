@@ -1,10 +1,10 @@
 # テスト方針 — 単体テスト
 
-本ファイルは**テスト作成時のガイド**。正本は `AGENTS.md`、配置の最低限は `src/AGENTS.md` にもサマリを置く。
+本ファイルは**テスト作成時のガイド**。正本は `AGENTS.md`、配置の最低限は `apps/web/AGENTS.md` にもサマリを置く。
 採用ツール・設定は `AGENTS.md` の「ポイント」節を参照。画面操作テスト（Playwright）は `docs/skills/playwright-evidence-test.md` が扱い、本ファイルは単体テストのみ扱う。
 
 - 単体: **Vitest**（`pnpm test` = `vitest run` / `pnpm test:watch` = watch）
-- 対象パターン: `src/**/*.{test,spec}.{ts,tsx}`（`vitest.config.ts`）
+- 対象パターン: `apps/*/src/**/*.{test,spec}.{ts,tsx}`（`vitest.config.ts`）
 - CI: GitHub Actions（`.github/workflows/ci.yml`）で `pnpm test` が**必須ゲート**（手元のフックはその前倒しであり、CI の二重化ではない）
 
 ## 1. 配置 — コロケーション
@@ -25,7 +25,7 @@ lite-DDD はレイヤーで責務が違う。テストの優先度も変える�
 | `repository.ts`（DB アクセス） | △原則書かない | 複雑なクエリ・トランザクション境界のみ。単純 CRUD は書かない（ORM を信用） | DB 統合（後述） |
 | `ui/` | ✕当面スキップ | E2E に委譲。単体では原則書かない | — |
 
-**観測性との整合**: 業務コードは `try/catch`・ログを書かず `throw new AppError(...)` のみ（`src/AGENTS.md`）。したがって —
+**観測性との整合**: 業務コードは `try/catch`・ログを書かず `throw new AppError(...)` のみ（`apps/web/AGENTS.md`）。したがって —
 - `service` のテストは「条件 → 正常戻り値 or AppError スロー」だけ見ればよい（副作用がなく書きやすい）。
 - ログ／エラー整形は入口ラッパー（`shared/observability`）のテストで**一度だけ**担保し、各 action で再テストしない。
 

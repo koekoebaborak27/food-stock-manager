@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "api（NestJS）を止めながら動かす",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["run", "dev"],
+      "autoAttachChildProcesses": true,
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "web（Next.js）のサーバー側を止めながら動かす",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/web",
+      "command": "pnpm run dev:debug",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "web（Next.js）のブラウザ側を止めながら動かす",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/apps/web"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "web と api を同時に動かす",
+      "configurations": [
+        "web（Next.js）のサーバー側を止めながら動かす",
+        "api（NestJS）を止めながら動かす"
+      ]
+    }
+  ]
+}
