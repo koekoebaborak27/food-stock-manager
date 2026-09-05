@@ -1,0 +1,91 @@
+// このプロジェクトのDBスキーマ。
+// 列の共通ルール・命名規約は docs/specs/02_basic-design/00_共通/01_データベース共通.md と prisma/AGENTS.md のとおり。
+// スキーマを変える手段はマイグレーションのみ（pnpm prisma:migrate）。db push は使わない。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 家族グループの中での役割。世帯につきADMINは1人だけ。
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+// ログインした利用者。Googleアカウントの表示名・メールアドレス・アイコンURLを持つ。
+// 退会・脱退では個人情報だけを空にし、行は残す（再ログイン時に空行を再利用する）。
+model User {
+  id          String   @id @default(uuid())
+  googleId    String   @unique
+  displayName String?
+  email       String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships Membership[]
+  invitations Invitation[]
+  sessions    Session[]
+}
+
+// ログインのセッション。詳細は docs/specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md。
+// Cookieには生トークンだけを入れ、ここにはそのハッシュだけを持つ。
+model Session {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// 家族グループ。管理者は列を持たず、Membership.roleで判定する。
+model Household {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  invitations Invitation[]
+}
+
+// 誰がどの家族グループに属しているか。1人が同時に所属できる家族グループは1つ。
+model Membership {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  householdId String
+  role        Role
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+}
+
+// 招待コード。参加成功・再発行・発行者の離脱で行ごと完全に消す。
+model Invitation {
+  id          String   @id @default(uuid())
+  householdId String
+  createdById String   @unique
+  code        String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+}

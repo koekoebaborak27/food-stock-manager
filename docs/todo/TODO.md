@@ -34,10 +34,14 @@
 ```powershell
 git log --oneline -1     # 現在のコミット
 git status --porcelain   # 未コミット差分がないか確認
-git switch main          # タスク 6 の PR がマージ済みなら main へ戻る
+git switch main          # タスク 7a の PR がマージ済みなら main へ戻る
 git pull                 # マージ結果を取り込む
 pnpm install             # 依存を最新にそろえる
+pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ変更後に必要）
+docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
+
+次はタスク7b（家族グループの作成・参加・一覧・脱退・除名・削除・招待コード発行）に着手する。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -48,7 +52,11 @@ pnpm install             # 依存を最新にそろえる
 - [x] **5c. `40_期限通知` の基本設計を書く**（2026-09-05）→ [履歴](history/2026-09-05_期限通知の基本設計.md)
 - [x] **6. 開発環境の土台を作る**（2026-09-05）→ [履歴](history/2026-09-05_開発環境の構築.md)・[落とし穴](notes/開発環境.md)
       当初は `package.json` へ依存を足すだけの予定だったが、Next.js と NestJS の要求が衝突したため pnpm workspace で `apps/web` / `apps/api` に分けた。
-- [ ] 7. 機能を実装する。基本設計にもとづき、必要な機能は先に [`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md) を書く。現在の画面とエンドポイントは動作確認用の仮置きなので差し替える。
+- [ ] 7. 機能を実装する。基本設計にもとづき、必要な機能は先に [`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md) を書く。1機能でも画面・API数が多い場合はPRをさらに段階分割する。
+  - [x] 7a. 認証と家族グループ: Googleログイン・セッションCookie・ログイン状態確認API（2026-09-05）→ [履歴](history/2026-09-05_ログイン基盤の実装.md)
+  - [ ] 7b. 認証と家族グループ: 家族グループの作成・参加・一覧・脱退・除名・削除・招待コード発行
+  - [ ] 7c. 認証と家族グループ: アカウント設定（表示名変更・退会）
+  - [ ] 7d以降. 常備食管理→買い物リスト→期限通知（基本設計の並び順）
 - [ ] 8. Dockerfile を web / api の 2 つ書き、ローカルで `docker build` → `docker run` が通ることを確認する。手順が確定するのはタスク 7 の後。
 - [ ] 9. Cloud Run へデプロイする。あわせて未決事項（最小インスタンス数を 0 のままとするか）を決める。
 
@@ -64,13 +72,13 @@ pnpm install             # 依存を最新にそろえる
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `feat/setup-nextjs-nestjs`（タスク 6 の PR。マージ後は `main` へ戻る） |
-| ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する |
+| 作業ブランチ | `feat/auth-google-login`（タスク 7a の PR。マージ後は `main` へ戻る） |
+| ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
 | 本番 | 未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
-| 実装 | 土台のみ。`apps/web`（Next.js 16）と `apps/api`（NestJS 12）が起動し、画面は仮のトップページ、API は状態を返すだけのエンドポイントが 1 つある。機能は未着手 |
-| 詳細設計 | 未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
+| 実装 | タスク7a完了。`apps/api`にGoogleログイン・セッションCookie・`GET /api/auth/session`が動く。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session`の5テーブル。`apps/web`はログイン画面とログイン中判定の振り分け（`src/proxy.ts`）のみ。家族グループの作成・参加・管理・招待、常備食管理以降の機能は未着手 |
+| 詳細設計 | [`10_認証と家族グループ/01_セッション設計.md`](../specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md)のみ着手。他は未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
 
 ## 完了済みの作業
 
