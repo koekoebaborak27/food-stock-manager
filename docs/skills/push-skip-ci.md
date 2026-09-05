@@ -44,7 +44,7 @@ git branch --show-current
 |---|---|---|
 | `*.md` と `docs/**` **だけ** | **低**。CI の検証対象外のファイルなので、失うものがない | `paths-ignore` が自動でスキップ。**`[skip ci]` は付けない** |
 | `.claude/**` / `.agents/**` のうち `*.md` 以外（`settings.json` など） | **低**。アプリのビルドに含まれない | `[skip ci]` |
-| `src/**` / `package.json` / `*.ts` / `*.json` などコードを含む | **高**。lint・型チェック・テスト・ビルドがすべて未検証になる | `[skip ci]` |
+| `apps/**` / `package.json` / `*.ts` / `*.json` などコードを含む | **高**。lint・型チェック・テスト・ビルドがすべて未検証になる | `[skip ci]` |
 | `.github/workflows/**` | **最高**。CI 設定が壊れていても気づけず、以降 CI が動かなくなる可能性がある | `[skip ci]` |
 
 低リスクの場面で `[skip ci]` を不要に付けない。付けると `paths-ignore` が働いたのか区別できなくなり、設定が壊れても気づけない。

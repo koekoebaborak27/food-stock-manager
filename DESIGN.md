@@ -7,7 +7,7 @@
 > 全 AI ツール（Claude / Codex / Copilot）と人間が共通で従う一次情報です。
 >
 > 運用ルール: このファイルは「コードと同じ」扱い。3〜6か月ごと、または見た目の破綻が増えたら剪定する。
-> 本書は**方針**のみを記述する。色コード・`--radius` などの具体値はここに書かず、正本である `src/app/globals.css`（`@theme`）と shadcn テンプレートで管理する（値の二重管理・ドリフトを避ける）。
+> 本書は**方針**のみを記述する。色コード・`--radius` などの具体値はここに書かず、正本である `apps/web/src/app/globals.css`（`@theme`）と shadcn テンプレートで管理する（値の二重管理・ドリフトを避ける）。
 
 ---
 
@@ -20,9 +20,9 @@
 
 ---
 
-## 2. デザイントークン（正本は `src/app/globals.css` の `@theme`）
+## 2. デザイントークン（正本は `apps/web/src/app/globals.css` の `@theme`）
 
-> Tailwind CSS v4（CSS-first）。トークンの実体は `src/app/globals.css` の CSS 変数 + `@theme inline`（light/dark, base=slate）に定義する。`tailwind.config.ts` は無い。新トークンが要るときは globals.css に追加する。
+> Tailwind CSS v4（CSS-first）。トークンの実体は `apps/web/src/app/globals.css` の CSS 変数 + `@theme inline`（light/dark, base=slate）に定義する。`tailwind.config.ts` は無い。新トークンが要るときは globals.css に追加する。
 
 ### カラー
 セマンティック変数で参照する（生の HEX を JSX に書かない）。各トークンは**用途（意味）で選ぶ**。実体の値は globals.css 側にあり、ここでは管理しない。
@@ -53,7 +53,7 @@
 | 本文 | `text-sm leading-relaxed` / `text-base` |
 | 補助 | `text-sm text-muted-foreground` |
 
-フォント: `next/font` で `src/app/layout.tsx` に読み込む（font-family の値は実装側で管理し、ここには書かない）。
+フォント: `next/font` で `apps/web/src/app/layout.tsx` に読み込む（font-family の値は実装側で管理し、ここには書かない）。
 
 ### 間隔（Spacing）
 - 4px グリッド（Tailwind 標準スケール）に従う。任意値で隙間を作らない。
@@ -107,7 +107,7 @@
 ✅ DO
 - `cn()` で条件付きクラスを合成する。
 - Shadcn コンポーネントの variant を使う（`<Button variant="outline">`）。
-- 既存パターンを `src/shared/ui/`（汎用プリミティブ）・`src/modules/<機能>/ui/`（機能専用）・`src/app/(main)/` の既存画面から踏襲する。
+- 既存パターンを `apps/web/src/shared/ui/`（汎用プリミティブ）・`apps/web/src/modules/<機能>/ui/`（機能専用）・`apps/web/src/app/(main)/` の既存画面から踏襲する。
 
 ❌ DON'T
 - 任意値（`p-[7px]`, `text-[#abc123]`, `top-[42px]`）を使う。
@@ -123,7 +123,7 @@
 
 ### コンポーネントの追加・配置
 - 新規 UI 部品は **公式 CLI で追加**する: `pnpm dlx shadcn@latest add <name>`（`components.json` 準拠 = `style: new-york` / `baseColor: slate` / RSC 有効）。
-- 汎用プリミティブの配置先は `src/shared/ui`。**機能専用**コンポーネントは各モジュールの `src/modules/<機能>/ui/` に置く（`shared/ui` には汎用のみ）。
+- 汎用プリミティブの配置先は `apps/web/src/shared/ui`。**機能専用**コンポーネントは各モジュールの `apps/web/src/modules/<機能>/ui/` に置く（`shared/ui` には汎用のみ）。
 - クラス結合は `cn()`（`@/shared/ui/utils`、clsx + tailwind-merge）を使う。
 - アイコンは `lucide-react`（既定 `size-4` = 16px）、トースト通知は `sonner`（`@/shared/ui/toaster`）。
 
@@ -139,7 +139,7 @@
 - 行の操作ボタンを置く末尾列はソート対象外とし、見出しの「操作」という文字列は表示しない。空の見出しセルには支援技術向けのアクセシブルな名前を設定する。
 - 共通 `<Table>` は本文を最大 10 行表示し、11 行目以降を表内で縦スクロールする。縦スクロール中も列ヘッダーを上端へ固定する。
 - セルは既定で折り返さない。表示幅を超える場合は表内で横スクロールし、本文の行高と表示行数を一定に保つ。
-- 最大高さなどの具体値は本書へ重複記載せず、`src/app/globals.css` のトークンで一元管理する。
+- 最大高さなどの具体値は本書へ重複記載せず、`apps/web/src/app/globals.css` のトークンで一元管理する。
 
 ### 検索条件
 - 検索条件がある一覧画面は、共通の `<SearchConditionCard>`（`@/shared/ui/search-condition-card`）で検索フォームを囲む。画面ごとに開閉 UI を再実装しない。

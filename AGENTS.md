@@ -29,7 +29,8 @@
 
 | ディレクトリ | 説明 |
 | --- | --- |
-| `src/` | アプリ本体。規約は `@src/AGENTS.md` |
+| `apps/web/` | 画面側（Next.js）。規約は `@apps/web/AGENTS.md` |
+| `apps/api/` | API 側（NestJS）。画面から呼ばれるサーバー。ESM ではなく CommonJS で動かすため、`package.json` に `"type": "module"` を書かない |
 | `e2e/` | ブラウザ操作の自動テスト（Playwright）。`@docs/skills/playwright-evidence-test.md` |
 | `docs/` | 設計・計画ドキュメント。作業手順（スキル）の正本は `docs/skills/`、開発フローは `docs/development/gitの操作ルール.md`、残タスク一式は `docs/todo/`（本編 `TODO.md` + 補足 `notes/` + 履歴 `history/`）。設計書は機能ごとに分割し、各ディレクトリの `README.md` が索引 |
 | `.github/` | Copilot 指示（`copilot-instructions.md`）+ Copilot プロンプト（`prompts/`）+ Copilot カスタムエージェント（`agents/<name>.agent.md`）+ CI ワークフロー（`workflows/ci.yml`） |
@@ -45,9 +46,11 @@
 > ここは**プロジェクトごとに書き換える節**。決まっていないうちは「未定」と書いておき、決まった時点で 1 行足す。
 
 - **技術スタック**: 言語 = TypeScript / Node.js（`.nvmrc` のバージョン）、パッケージマネージャ = pnpm、テスト = Vitest（単体）+ Playwright（画面）。フロントエンド = Next.js、バックエンド = NestJS、DB = Supabase PostgreSQL。
-- **アーキテクチャ**: 依存方向は `app → modules → shared` の一方向のみ。詳細 → `@src/AGENTS.md`
+- **アーキテクチャ**: 依存方向は `app → modules → shared` の一方向のみ。詳細 → `@apps/web/AGENTS.md`
+- **リポジトリの分け方**: pnpm workspace（`pnpm-workspace.yaml`）で `apps/web` と `apps/api` を別パッケージにしている。**依存パッケージは各アプリの `package.json` に入れる**（`pnpm --filter web add <名前>`）。ルートに入れてよいのは両方で使う開発ツールだけで、その場合は `-w` を付ける。型設定も `tsconfig.base.json` を各アプリが読み込んで、差分だけを上書きする形にしている。
+- **TypeScript のバージョンは `~6.0.3` に固定**。`typescript-eslint` が `<6.1.0` までしか対応しておらず、`^` にすると 6.1 へ上がって `pnpm lint` が動かなくなるため。上げるときは `typescript-eslint` の対応範囲を先に確認する。
 - **CI は GitHub Actions**（lint / format / typecheck / test）。デプロイ先は Google Cloud Run。
-- **ローカル開発の起動方法**をここに 1〜2 行で書く（例: `pnpm install` の後に `pnpm dev`。DB を使う場合は先に起動する）。
+- **ローカル開発の起動方法**: `pnpm install` の後、ターミナルを 2 つ開いて `pnpm dev:web`（画面・3000 番）と `pnpm dev:api`（API・3001 番）をそれぞれ実行する。VSCode で 1 行ずつ止めながら動かしたいときは、実行とデバッグから「web と api を同時に動かす」を選ぶ（`.vscode/launch.json`）。
 - 認証・認可の方式が決まったらここに 1 行足す。
 
 ## 最小規約
@@ -70,6 +73,9 @@
 
 ```
 pnpm install        # 依存パッケージの取得
+pnpm dev:web        # 画面（Next.js）を開発モードで起動。3000 番
+pnpm dev:api        # API（NestJS）を開発モードで起動。3001 番
+pnpm build          # web と api の両方をビルド
 pnpm lint           # ESLint
 pnpm format         # Prettier で整形
 pnpm format:check   # Prettier チェック
@@ -79,7 +85,7 @@ pnpm test:watch     # Vitest（監視）
 pnpm test:e2e       # Playwright（画面操作）
 ```
 
-フレームワークを導入したら `dev` / `build` / `start` などをここへ追記する。
+片方のアプリだけを対象にしたいときは `pnpm --filter web <コマンド>` / `pnpm --filter api <コマンド>` を使う（例: `pnpm --filter api build`）。
 
 ## 参照
 
@@ -89,7 +95,7 @@ pnpm test:e2e       # Playwright（画面操作）
 - コミット / PR レビュー観点: `REVIEW.md`
 - テスト方針（単体）: `TESTING.md`
 - エージェント権限ポリシー（許可 / 禁止コマンド）: `@docs/agent_permissions.md`
-- アーキテクチャ規約: `@src/AGENTS.md`
+- アーキテクチャ規約: `@apps/web/AGENTS.md`
 - DB 規約（Prisma 採用時）: `@prisma/AGENTS.md`
 - 図（mermaid）の作成手順: `@docs/diagrams.md`
 - スキルの一覧と追加手順: `@docs/skills/README.md`

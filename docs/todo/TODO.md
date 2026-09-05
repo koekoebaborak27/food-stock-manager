@@ -24,8 +24,8 @@
 | --- | --- |
 | 要件定義 | 5 / 5 |
 | 基本設計 | 6 / 6 |
-| インフラ構築 | 0 / 1 |
-| 実装 | 0 / 1 |
+| 実装 | 1 / 2 |
+| インフラ構築 | 0 / 2 |
 
 ## 次にやること
 
@@ -34,6 +34,9 @@
 ```powershell
 git log --oneline -1     # 現在のコミット
 git status --porcelain   # 未コミット差分がないか確認
+git switch main          # タスク 6 の PR がマージ済みなら main へ戻る
+git pull                 # マージ結果を取り込む
+pnpm install             # 依存を最新にそろえる
 ```
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
@@ -43,7 +46,11 @@ git status --porcelain   # 未コミット差分がないか確認
 - [x] **5a. 常備食管理の基本設計を書く**（2026-09-05）→ [履歴](history/2026-09-05_常備食管理の基本設計.md)
 - [x] **5b. 買い物リストの基本設計を書く**（2026-09-05）→ [履歴](history/2026-09-05_常備食管理の基本設計.md#2026-09-05-買い物リストの設計を補完した)
 - [x] **5c. `40_期限通知` の基本設計を書く**（2026-09-05）→ [履歴](history/2026-09-05_期限通知の基本設計.md)
-- [ ] 6. `package.json` に Next.js / NestJS の依存とスクリプトを足し、`pnpm install` → `pnpm lint && pnpm typecheck && pnpm test` が通ることを確認する。
+- [x] **6. 開発環境の土台を作る**（2026-09-05）→ [履歴](history/2026-09-05_開発環境の構築.md)・[落とし穴](notes/開発環境.md)
+      当初は `package.json` へ依存を足すだけの予定だったが、Next.js と NestJS の要求が衝突したため pnpm workspace で `apps/web` / `apps/api` に分けた。
+- [ ] 7. 機能を実装する。基本設計にもとづき、必要な機能は先に [`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md) を書く。現在の画面とエンドポイントは動作確認用の仮置きなので差し替える。
+- [ ] 8. Dockerfile を web / api の 2 つ書き、ローカルで `docker build` → `docker run` が通ることを確認する。手順が確定するのはタスク 7 の後。
+- [ ] 9. Cloud Run へデプロイする。あわせて未決事項（最小インスタンス数を 0 のままとするか）を決める。
 
 ## 残っているタスク
 
@@ -57,12 +64,13 @@ git status --porcelain   # 未コミット差分がないか確認
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main` |
-| ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `typecheck` / `test` / `format:check` が通る） |
+| 作業ブランチ | `feat/setup-nextjs-nestjs`（タスク 6 の PR。マージ後は `main` へ戻る） |
+| ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する |
 | 本番 | 未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
-| 実装 | 未着手 |
+| 実装 | 土台のみ。`apps/web`（Next.js 16）と `apps/api`（NestJS 12）が起動し、画面は仮のトップページ、API は状態を返すだけのエンドポイントが 1 つある。機能は未着手 |
+| 詳細設計 | 未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
 
 ## 完了済みの作業
 
@@ -71,4 +79,4 @@ git status --porcelain   # 未コミット差分がないか確認
 | 区分 | 件数 | 記録 |
 | --- | --- | --- |
 | 要件定義 | 1 | [2026-09-04_要件定義の合意.md](history/2026-09-04_要件定義の合意.md) |
-| 開発環境 | 1 | [2026-09-04_エージェント権限ポリシーの整合.md](history/2026-09-04_エージェント権限ポリシーの整合.md) |
+| 開発環境 | 2 | [2026-09-04_エージェント権限ポリシーの整合.md](history/2026-09-04_エージェント権限ポリシーの整合.md)・[2026-09-05_開発環境の構築.md](history/2026-09-05_開発環境の構築.md) |

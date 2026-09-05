@@ -9,7 +9,15 @@ const config = [
   // Prettier と競合する整形系ルールを無効化（format は Prettier に一任）
   prettier,
   {
-    ignores: ["node_modules/**", "coverage/**", "playwright.config.ts", "e2e/**"],
+    ignores: [
+      "node_modules/**",
+      "coverage/**",
+      "playwright.config.ts",
+      "e2e/**",
+      // 各アプリのビルド出力。自動生成されたコードなので検査しない。
+      "apps/*/dist/**",
+      "apps/web/.next/**",
+    ],
   },
 ];
 

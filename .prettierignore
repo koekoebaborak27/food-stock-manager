@@ -3,3 +3,8 @@ coverage/
 pnpm-lock.yaml
 *.md
 **/.claude/
+
+# 自動で作られるファイル。整形しても作り直されるため対象外にする。
+apps/web/.next/
+apps/web/next-env.d.ts
+apps/api/dist/

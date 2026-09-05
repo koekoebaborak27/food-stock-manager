@@ -81,7 +81,7 @@ gh pr merge --squash --delete-branch
  M README.md             ← 変更したが、まだステージしていない
 ?? docs/todo/TODO_新.md  ← 新しく作ったファイル（Gitがまだ追跡していない）
  D docs/old.md           ← 削除したが、まだステージしていない
-M  src/modules/task/service.ts   ← ステージ済み（印が左の列へ移動している）
+M  apps/web/src/modules/task/service.ts   ← ステージ済み（印が左の列へ移動している）
 A  docs/new.md           ← 新規ファイルをステージ済み
 ```
 
@@ -149,7 +149,7 @@ git branch -D docs/update-readme
 |---|---|---|
 | `README.md` / `README_SIMPLE.md` / `AGENTS.md` / `CLAUDE.md` / `docs/**` / その他すべての `*.md` | CI不要 | **自動でスキップ**（`paths-ignore`） |
 | `.claude/**` / `.agents/**` / `.codex/**` のうち `*.md` 以外（`settings.json`・`*.rules` など） | CI不要 | 手動でスキップ（`[skip ci]`） |
-| `src/**` / `package.json` / `pnpm-lock.yaml` / `*.ts` / `*.json` などの設定ファイル | **CI必須** | 止めない |
+| `apps/**` / `package.json` / `pnpm-lock.yaml` / `*.ts` / `*.json` などの設定ファイル | **CI必須** | 止めない |
 | `.github/workflows/ci.yml` | **CI必須** | 止めない（CI自体の変更は、動かさないと検証できないため） |
 | ビルド・実行環境の定義（`Dockerfile` / `docker/**` など） | **CI必須** | 止めない |
 
@@ -207,7 +207,7 @@ git push
 gh run list --limit 3
 ```
 
-手順1・5の表示の読み方は「[`git status --short`の読み方（対象ファイルの決め方）](#git-status---short-の読み方対象ファイルの決め方)」を参照してください。**この方法ではPull Requestによる見直しの機会がないため、手順1でコード（`src/**`など）が混ざっていないことを必ず確認してください。**
+手順1・5の表示の読み方は「[`git status --short`の読み方（対象ファイルの決め方）](#git-status---short-の読み方対象ファイルの決め方)」を参照してください。**この方法ではPull Requestによる見直しの機会がないため、手順1でコード（`apps/**`など）が混ざっていないことを必ず確認してください。**
 
 手順4bの`git add -A`（`--all`の短縮形）は、**変更・新規作成・削除のすべてをまとめてステージする**指定です。ドキュメントを何ファイルも直した場合に、1つずつ書き並べる手間を省けます。
 
