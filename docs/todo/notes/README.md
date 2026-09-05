@@ -5,6 +5,7 @@
 | ファイル | 内容 |
 | --- | --- |
 | [開発環境.md](開発環境.md) | pnpm workspace での依存の入れ方、TypeScript 6 の設定、自動生成ファイルの扱い |
+| [DB.md](DB.md) | Prismaのバージョン選定、モノレポでの依存の入れ方、ローカルPostgres（Docker）の設定 |
 
 ## 書き方
 

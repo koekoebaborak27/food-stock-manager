@@ -29,6 +29,8 @@ pnpm install && pnpm lint && pnpm typecheck && pnpm test
 
 画面と API は別々のサーバーなので、動かすときは**ターミナルを 2 つ開いて** `pnpm dev:web` と `pnpm dev:api` をそれぞれ実行します。VS Code で 1 行ずつ止めながら動かす方法は [`README.md`](README.md#vs-code-で-1-行ずつ止めながら動かす) にあります。
 
+`apps/api` を動かすにはローカルDBと`.env`の設定が要ります。手順は [`README.md`](README.md#よく使うコマンド) を見てください。
+
 ## よく使うコマンド
 
 ```

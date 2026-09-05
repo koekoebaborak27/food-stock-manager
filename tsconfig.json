@@ -7,6 +7,6 @@
     "noEmit": true,
     "incremental": true
   },
-  "include": ["tools/**/*.ts", "vitest.config.ts"],
+  "include": ["tools/**/*.ts", "vitest.config.ts", "prisma.config.ts", "prisma/**/*.ts"],
   "exclude": ["node_modules", "apps", "e2e", "playwright.config.ts"]
 }

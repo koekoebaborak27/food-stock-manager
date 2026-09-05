@@ -10,7 +10,7 @@
 
 ## 状況
 
-**要件定義と基本設計が完了し、実装の土台を作ったところです。機能の実装はこれからです。**
+**要件定義と基本設計が完了し、Googleログイン・セッションの土台まで実装しました。家族グループ以降の機能はこれからです。**
 
 | 種類 | 場所 |
 |---|---|
@@ -127,9 +127,15 @@ pnpm format:check   # Prettier チェック
 pnpm typecheck      # tsc --noEmit
 pnpm test           # Vitest（単体）
 pnpm test:e2e       # Playwright（画面操作）
+pnpm prisma:generate # Prisma Client を生成（clone直後・スキーマ変更後に必要）
+pnpm prisma:migrate  # マイグレーションを作成してローカルDBへ適用
+pnpm prisma:seed     # 初期データを投入する
+pnpm db:reset        # ローカルDBを作り直す（要確認。データが消える）
 ```
 
 画面と API は別々のサーバーなので、**ターミナルを 2 つ開いて `pnpm dev:web` と `pnpm dev:api` をそれぞれ実行**します。片方のパッケージだけを対象にしたいときは `pnpm --filter web <コマンド>` / `pnpm --filter api <コマンド>` を使います。
+
+`apps/api` はDBに接続します。`docker compose -f docker/docker-compose.yml up -d db` でローカルPostgresを起動し、`.env`（[`.env.example`](.env.example)を写して作る）に`DATABASE_URL`とGoogleログイン用の`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`を設定してから動かします。
 
 依存パッケージを足すときは、入れる先を間違えないよう `--filter` で指定します。詳しくは [`docs/todo/notes/開発環境.md`](docs/todo/notes/開発環境.md)。
 
