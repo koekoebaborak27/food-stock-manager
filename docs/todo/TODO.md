@@ -76,12 +76,12 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `codex/stock-register-edit`（タスク7d-3。`codex/stock-list-page`〈タスク7d-2 PR〉、`codex/stock-list-api`〈タスク7d-1 PR〉、`codex/task-7c-account-settings`〈タスク7c PR〉、`feat/household-screens`〈タスク7bフロントエンドPR〉、`feat/household-management`〈タスク7bバックエンドPR〉の上に積んだスタックPR） |
+| 作業ブランチ | `codex/stock-register-edit`（タスク7d-3。base は `main`） |
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
 | 本番 | 未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
-| 実装 | タスク7a〜7c・7d-1〜7d-3完了（7b〜7d-3のPRは`main`未マージ）。`apps/api`にGoogleログイン・セッションCookie・`GET /api/auth/session`（`userId` `email`を含む）・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）がある。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock`の6テーブル。`apps/web`はログイン画面・ログイン中判定の振り分け（`src/proxy.ts`）に加え、家族グループの選択・作成・参加・メンバー一覧・招待コード発行の5画面、アカウント設定画面、常備食リスト画面、常備食の登録・編集画面（`/stocks/new`・`/stocks/{id}/edit`）が動く。常備食リストは保存区分・食品名・並び替え・期限が近い食品で絞り込める。常備食の詳細画面・残数変更・削除・消費済以降と買い物リスト・期限通知は未着手 |
+| 実装 | タスク7a〜7c・7d-1〜7d-3完了（7d-3のPRは`main`未マージ）。`apps/api`にGoogleログイン・セッションCookie・`GET /api/auth/session`（`userId` `email`を含む）・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）がある。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock`の6テーブル。`apps/web`はログイン画面・ログイン中判定の振り分け（`src/proxy.ts`）に加え、家族グループの選択・作成・参加・メンバー一覧・招待コード発行の5画面、アカウント設定画面、常備食リスト画面、常備食の登録・編集画面（`/stocks/new`・`/stocks/{id}/edit`）が動く。常備食リストは保存区分・食品名・並び替え・期限が近い食品で絞り込める。常備食の詳細画面・残数変更・削除・消費済以降と買い物リスト・期限通知は未着手 |
 | 詳細設計 | [`10_認証と家族グループ/01_セッション設計.md`](../specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md)・[`02_家族グループの状態遷移.md`](../specs/03_detail-design/10_認証と家族グループ/02_家族グループの状態遷移.md)まで着手。他は未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
 
 ## 完了済みの作業
