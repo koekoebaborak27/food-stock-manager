@@ -23,7 +23,8 @@
 - **DB アクセスは `repository.ts` と `shared/db` 以外から触らない**。
 - DB・シークレット等サーバ専用コードは、クライアントへ混入しない仕組みを入れる（例: Next.js なら `server-only` を import する）。
 - **観測性（ログ）**: 入口は `shared/observability` のラッパー（画面操作用・API 用・ジョブ用）でくるむ。業務コードに `try/catch` やログは**書かない**。エラーは `throw new AppError(code, httpStatus, userMessage, context)` するだけ（ログは境界が1回だけ出す）。生成は `shared/errors/app-error.ts` の `Errors` ファクトリを使う。`code` は grep 可能なキー文字列で、標準コードは `Errors.*`（`NOT_FOUND` / `UNAUTHORIZED` / `FORBIDDEN` / `VALIDATION_ERROR` / `CONFLICT`）、それ以外は独自キーを足してよい。
-- 一覧 UI の規約は `DESIGN.md`「一覧（テーブル）」を正本とする。
+- 見た目（配色・部品の使い分け・レイアウト・アクセシビリティ）は `DESIGN.md` を正本とする。色の値は `src/app/globals.css` のトークンが正本で、JSX に生の HEX を書かない。
+- **部品の置き場所**: 機能ごとの画面部品は `src/modules/<機能>/ui/`、shadcn/ui の部品は `src/components/ui/`（原則そのまま使い、見た目は `globals.css` のトークンで変える）、複数機能で使う自前の部品は `src/components/`。クラス名の結合は `@/lib/utils` の `cn` を使う。
 - **テスト**は対象ファイル隣にコロケーション（`<name>.test.ts`、`__tests__/` は原則作らない）。レイヤー選別・観点・分割方針の詳細は `TESTING.md`。
 
 ## フレームワーク固有（採用する場合のみ）
