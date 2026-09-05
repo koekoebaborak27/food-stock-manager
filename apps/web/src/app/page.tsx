@@ -1,18 +1,16 @@
 import { redirect } from "next/navigation";
-import { getSession, LogoutButton } from "@/modules/auth";
+import { getSession } from "@/modules/auth";
+import { getMyHousehold } from "@/modules/household";
+import { StockListPage } from "@/modules/stock";
 
 // トップ画面。どの家族グループにも属していなければ選択画面へ振り分ける。
-// 常備食一覧は未実装のため、それ以外は今は土台が動くことを確かめるための仮置き。
+// 所属している利用者には、アプリの入口となる常備食リストを表示する。
 export default async function Home() {
   const session = await getSession();
   if (!session.household) {
     redirect("/household");
   }
 
-  return (
-    <main>
-      <h1>おうちde常備食</h1>
-      <LogoutButton />
-    </main>
-  );
+  const household = await getMyHousehold();
+  return <StockListPage householdName={household.name} />;
 }
