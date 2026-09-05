@@ -7,7 +7,9 @@ import { SessionGuard } from "./session.guard";
 import { SessionService, type SessionUser } from "./session.service";
 
 interface SessionResponse {
+  userId: string;
   displayName: string | null;
+  email: string | null;
   avatarUrl: string | null;
   household: { id: string; role: "ADMIN" | "MEMBER" } | null;
 }
@@ -49,7 +51,9 @@ export class AuthController {
   async session(@Req() req: Request & { user: SessionUser }): Promise<SessionResponse> {
     const profile = await this.authService.getProfile(req.user.userId);
     return {
+      userId: req.user.userId,
       displayName: profile.displayName,
+      email: profile.email,
       avatarUrl: profile.avatarUrl,
       household:
         req.user.householdId && req.user.role

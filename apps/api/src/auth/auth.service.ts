@@ -29,8 +29,8 @@ export class AuthService {
 
   async getProfile(
     userId: string,
-  ): Promise<{ displayName: string | null; avatarUrl: string | null }> {
+  ): Promise<{ displayName: string | null; email: string | null; avatarUrl: string | null }> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    return { displayName: user.displayName, avatarUrl: user.avatarUrl };
+    return { displayName: user.displayName, email: user.email, avatarUrl: user.avatarUrl };
   }
 }
