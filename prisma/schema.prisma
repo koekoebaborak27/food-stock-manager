@@ -17,6 +17,23 @@ enum Role {
   MEMBER
 }
 
+// 食品を保管する場所。画面には日本語の表示名へ変換して出す。
+enum StorageType {
+  REFRIGERATED
+  FROZEN
+  ROOM_TEMPERATURE
+}
+
+// 残数に付ける単位。未選択はStock.unitをnullにする。
+enum UnitType {
+  PIECE
+  BAG
+  PACK
+  SERVING
+  BOTTLE
+  GOTO
+}
+
 // ログインした利用者。Googleアカウントの表示名・メールアドレス・アイコンURLを持つ。
 // 退会・脱退では個人情報だけを空にし、行は残す（再ログイン時に空行を再利用する）。
 model User {
@@ -31,6 +48,8 @@ model User {
   memberships Membership[]
   invitations Invitation[]
   sessions    Session[]
+  createdStocks Stock[] @relation("StockCreatedBy")
+  updatedStocks Stock[] @relation("StockUpdatedBy")
 }
 
 // ログインのセッション。詳細は docs/specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md。
@@ -57,6 +76,7 @@ model Household {
 
   memberships Membership[]
   invitations Invitation[]
+  stocks      Stock[]
 }
 
 // 誰がどの家族グループに属しているか。1人が同時に所属できる家族グループは1つ。
@@ -88,4 +108,30 @@ model Invitation {
   createdBy User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([householdId])
+}
+
+// 家族グループで共有する常備食。消費済・削除済も行を残して区別する。
+model Stock {
+  id            String      @id @default(uuid())
+  householdId   String
+  name          String
+  storageType   StorageType @default(REFRIGERATED)
+  quantity      Int         @default(1)
+  unit          UnitType?
+  expiresOn     DateTime?   @db.Date
+  isHomemade    Boolean     @default(false)
+  memo          String?
+  consumedAt    DateTime?
+  createdById   String?
+  updatedById   String?
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("StockCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("StockUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([householdId])
+  @@index([householdId, deletedAt, consumedAt, expiresOn])
 }
