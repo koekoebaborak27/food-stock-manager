@@ -1,0 +1,111 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+  色の値の正本はこのファイル。
+  「おうちde常備食」はライトのみで、端末がダーク設定でもライトで表示する。
+  参照元の画面イメージ: docs/specs/02_basic-design/99_デザインイメージ/
+  文字が載る組み合わせはすべて WCAG AA（本文 4.5:1、枠線 3:1）を満たす値を選んである。
+*/
+:root {
+  color-scheme: light;
+
+  --radius: 1rem;
+
+  /* 地と文字 */
+  --background: #fdf8f1;
+  --foreground: #3b2a1d;
+
+  /* カード面・ポップオーバー面 */
+  --card: #ffffff;
+  --card-foreground: #3b2a1d;
+  --popover: #ffffff;
+  --popover-foreground: #3b2a1d;
+
+  /* 主操作。コーラルオレンジ。白文字で 4.53:1 */
+  --primary: #c75124;
+  --primary-foreground: #ffffff;
+
+  /* 補助操作・ピルの地。淡いベージュ */
+  --secondary: #f4e9da;
+  --secondary-foreground: #5c4632;
+
+  /* 控えめな面と補助テキスト */
+  --muted: #f4e9da;
+  --muted-foreground: #7a6350;
+
+  /* ホバー・選択中の面 */
+  --accent: #faeee0;
+  --accent-foreground: #3b2a1d;
+
+  /* 取り消せない操作と期限切れ。白文字で 6.23:1 */
+  --destructive: #b3311a;
+  --destructive-foreground: #ffffff;
+
+  /* 枠線は 2 種。border は仕切り用の淡いベージュ、input は入力欄の輪郭で 3.33:1 */
+  --border: #e7d8c2;
+  --input: #a58260;
+  --ring: #c75124;
+
+  /*
+    期限の状態を表す 4 段階。
+    色だけを手がかりにしないため、画面側では必ず文言とアイコンも添えること。
+  */
+  --expiry-expired: #b3311a;
+  --expiry-expired-foreground: #ffffff;
+  --expiry-today: #fbe3d8;
+  --expiry-today-foreground: #a63c16;
+  --expiry-soon: #fbeecb;
+  --expiry-soon-foreground: #8a5a00;
+  --expiry-normal: #f4e9da;
+  --expiry-normal-foreground: #7a6350;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-expiry-expired: var(--expiry-expired);
+  --color-expiry-expired-foreground: var(--expiry-expired-foreground);
+  --color-expiry-today: var(--expiry-today);
+  --color-expiry-today-foreground: var(--expiry-today-foreground);
+  --color-expiry-soon: var(--expiry-soon);
+  --color-expiry-soon-foreground: var(--expiry-soon-foreground);
+  --color-expiry-normal: var(--expiry-normal);
+  --color-expiry-normal-foreground: var(--expiry-normal-foreground);
+
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* 丸みのある和文書体を優先し、無ければ標準のゴシックへ落とす */
+    font-family:
+      "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", "Meiryo",
+      system-ui, sans-serif;
+  }
+}

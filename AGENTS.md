@@ -45,7 +45,7 @@
 
 > ここは**プロジェクトごとに書き換える節**。決まっていないうちは「未定」と書いておき、決まった時点で 1 行足す。
 
-- **技術スタック**: 言語 = TypeScript / Node.js（`.nvmrc` のバージョン）、パッケージマネージャ = pnpm、テスト = Vitest（単体）+ Playwright（画面）。フロントエンド = Next.js、バックエンド = NestJS、DB = Supabase PostgreSQL。
+- **技術スタック**: 言語 = TypeScript / Node.js（`.nvmrc` のバージョン）、パッケージマネージャ = pnpm、テスト = Vitest（単体）+ Playwright（画面）。フロントエンド = Next.js（スタイルは Tailwind CSS v4 + shadcn/ui。ライトのみでダークは持たない）、バックエンド = NestJS、DB = Supabase PostgreSQL。
 - **アーキテクチャ**: 依存方向は `app → modules → shared` の一方向のみ。詳細 → `@apps/web/AGENTS.md`
 - **リポジトリの分け方**: pnpm workspace（`pnpm-workspace.yaml`）で `apps/web` と `apps/api` を別パッケージにしている。**依存パッケージは各アプリの `package.json` に入れる**（`pnpm --filter web add <名前>`）。ルートに入れてよいのは両方で使う開発ツールだけで、その場合は `-w` を付ける。型設定も `tsconfig.base.json` を各アプリが読み込んで、差分だけを上書きする形にしている。
 - **TypeScript のバージョンは `~6.0.3` に固定**。`typescript-eslint` が `<6.1.0` までしか対応しておらず、`^` にすると 6.1 へ上がって `pnpm lint` が動かなくなるため。上げるときは `typescript-eslint` の対応範囲を先に確認する。
