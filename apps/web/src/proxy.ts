@@ -17,5 +17,7 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next|favicon.ico).*)"],
+  // public/ 配下の画像（例: /images/...）はログインしていなくても配信できる必要がある
+  // （ログイン画面の背景写真など）。認証チェックの対象から外す。
+  matcher: ["/((?!api|_next|favicon.ico|images).*)"],
 };
