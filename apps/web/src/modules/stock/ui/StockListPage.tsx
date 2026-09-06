@@ -244,7 +244,9 @@ export function StockListPage({ householdName }: { householdName: string }) {
       </Link>
       <nav className="fixed right-0 bottom-0 left-0 mx-auto flex h-16 max-w-md items-center justify-around border-t bg-card text-xs">
         <span className="font-bold text-primary">常備食</span>
-        <span className="text-muted-foreground">買い物</span>
+        <Link href="/shopping-list" className="text-muted-foreground">
+          買い物
+        </Link>
         <Link href="/stocks/consumed" className="text-muted-foreground">
           消費済
         </Link>
