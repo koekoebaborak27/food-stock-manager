@@ -282,7 +282,12 @@ describe("stock/StockService update", () => {
         data: { householdId: household.id, name: "にんじん" },
       });
       const staleUpdatedAt = stock.updatedAt;
-      await prisma.stock.update({ where: { id: stock.id }, data: { quantity: 5 } });
+      // DBのタイムスタンプは書き込み間隔が短いと同じ値に丸まることがあるため、
+      // 「先に更新されていた」状態を確実に作るためupdatedAtを明示的に未来へずらす。
+      await prisma.stock.update({
+        where: { id: stock.id },
+        data: { quantity: 5, updatedAt: new Date(staleUpdatedAt.getTime() + 1000) },
+      });
 
       await expect(
         service.update(user.id, stock.id, validInput, staleUpdatedAt),
@@ -523,7 +528,12 @@ describe("stock/StockService remove", () => {
         data: { householdId: household.id, name: "にんじん" },
       });
       const staleUpdatedAt = stock.updatedAt;
-      await prisma.stock.update({ where: { id: stock.id }, data: { quantity: 5 } });
+      // DBのタイムスタンプは書き込み間隔が短いと同じ値に丸まることがあるため、
+      // 「先に更新されていた」状態を確実に作るためupdatedAtを明示的に未来へずらす。
+      await prisma.stock.update({
+        where: { id: stock.id },
+        data: { quantity: 5, updatedAt: new Date(staleUpdatedAt.getTime() + 1000) },
+      });
 
       await expect(service.remove(user.id, stock.id, staleUpdatedAt)).rejects.toMatchObject({
         code: "STOCK_UPDATE_CONFLICT",
