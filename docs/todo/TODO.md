@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-タスク7d-5・7e-1・7e-2・7e-3・7e-4・7e-5まで`main`にマージ済み（7e-2は当初のPR #20がスタックPRのbase branch消失で自動クローズされたため、リベースしてPR #21として作り直しマージした。経緯は[履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-スタックprのbase-branchが消えて自動クローズされた不具合)）。買い物リスト機能（7e）が完了。次は7f以降（期限通知）に着手する。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
+タスク7d-5・7e-1・7e-2・7e-3・7e-4・7e-5まで`main`にマージ済み（7e-2は当初のPR #20がスタックPRのbase branch消失で自動クローズされたため、リベースしてPR #21として作り直しマージした。経緯は[履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-スタックprのbase-branchが消えて自動クローズされた不具合)）。買い物リスト機能（7e）が完了。次は7f-1（期限通知: スキーマと通知時刻API）から着手する。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -66,7 +66,10 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
   - [x] 7e-3. 買い物リスト: 直接入力・常備食からの追加API/画面（重複判定を含む。常備食側の追加ボタンはこの後）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-直接入力常備食からの追加を実装した7e-3)
   - [x] 7e-4. 買い物リスト: 購入状態変更API・購入確認シート（[詳細設計: 購入時の常備食反映](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)を実装）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-購入状態変更を実装した7e-4)
   - [x] 7e-5. 買い物リスト: 削除・一括削除・復元のAPI・画面（[詳細設計: 重複判定と一括操作の整合性](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)の一括部分を実装）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-削除一括削除復元を実装した7e-5)
-  - [ ] 7f以降. 期限通知（基本設計の並び順）
+  - [ ] 7f-1. 期限通知: スキーマ(`PushSubscription` `NotificationSetting`)と通知時刻API(`GET/PATCH /api/notification-settings`)
+  - [ ] 7f-2. 期限通知: PWAの土台(`manifest.json`・Service Worker登録・VAPID鍵)と購読API(`GET /api/push-subscriptions/me`・`POST /api/push-subscriptions`・`DELETE /api/push-subscriptions/me`)
+  - [ ] 7f-3. 期限通知: 通知の設定画面(通知トグル・通知時刻選択)
+  - [ ] 7f-4. 期限通知: 配信バッチAPI(`POST /api/internal/notifications/dispatch`)を実装する（[詳細設計: Web Push配信処理](../specs/03_detail-design/40_期限通知/01_Web_Push配信処理.md)を先に書く）
 - [ ] 8. Dockerfile を web / api の 2 つ書き、ローカルで `docker build` → `docker run` が通ることを確認する。手順が確定するのはタスク 7 の後。
 - [ ] 9. Cloud Run へデプロイする。あわせて未決事項（最小インスタンス数を 0 のままとするか）を決める。
 
