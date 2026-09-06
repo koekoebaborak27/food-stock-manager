@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-タスク7d-5まで`main`にマージ済み。次は`7e以降`（買い物リスト→期限通知）に進む。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
+タスク7d-5まで`main`にマージ済み。買い物リストの詳細設計（[購入時の常備食反映](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)・[重複判定と一括操作の整合性](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)）まで完了。次は`7e-1`（`ShoppingItem`のスキーマと一覧取得API）から着手する。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -61,7 +61,12 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
   - [x] 7d-3. 常備食管理: 登録・編集のAPIと画面を実装する（2026-09-05）→ [履歴](history/2026-09-05_アカウント設定の実装.md#2026-09-05-常備食の登録編集を実装した)
   - [x] 7d-4. 常備食管理: 常備食の詳細画面と残数の増減・削除・消費済を実装する（買い物リストへの追加は30_買い物リストの実装後）（2026-09-06）→ [履歴](history/2026-09-05_アカウント設定の実装.md#2026-09-06-常備食の詳細画面残数増減削除消費済を実装した)
   - [x] 7d-5. 常備食管理: 消費済リスト画面と常備食へ戻すAPIを実装する（買い物リストへ追加する操作は30_買い物リストの実装後）（2026-09-06）→ [履歴](history/2026-09-05_アカウント設定の実装.md#2026-09-06-消費済リスト画面を実装した)
-  - [ ] 7e以降. 買い物リスト→期限通知（基本設計の並び順）
+  - [ ] 7e-1. 買い物リスト: `ShoppingItem`のスキーマと一覧取得API（`GET /api/shopping-items`）
+  - [ ] 7e-2. 買い物リスト: 買い物リスト画面（一覧表示・未購入/購入済みの開閉・空表示）
+  - [ ] 7e-3. 買い物リスト: 直接入力・常備食からの追加API/画面（重複判定を含む。常備食側の追加ボタンはこの後）
+  - [ ] 7e-4. 買い物リスト: 購入状態変更API・購入確認シート（[詳細設計: 購入時の常備食反映](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)を実装）
+  - [ ] 7e-5. 買い物リスト: 削除・一括削除・復元のAPI・画面（[詳細設計: 重複判定と一括操作の整合性](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)の一括部分を実装）
+  - [ ] 7f以降. 期限通知（基本設計の並び順）
 - [ ] 8. Dockerfile を web / api の 2 つ書き、ローカルで `docker build` → `docker run` が通ることを確認する。手順が確定するのはタスク 7 の後。
 - [ ] 9. Cloud Run へデプロイする。あわせて未決事項（最小インスタンス数を 0 のままとするか）を決める。
 
@@ -83,7 +88,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
 | 実装 | タスク7a〜7c・7d-1〜7d-5完了（すべて`main`マージ済み）。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）に加え、消費済リストの取得（`GET /api/stocks/consumed`）・常備食への再登録（`POST /api/stocks/{id}/re-register`）がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock`の6テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面に加え、常備食リスト画面・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`）・消費済リスト画面（`/stocks/consumed`）が動く。買い物リストへ追加する操作・買い物リスト・期限通知は未着手 |
-| 詳細設計 | [`10_認証と家族グループ/01_セッション設計.md`](../specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md)・[`02_家族グループの状態遷移.md`](../specs/03_detail-design/10_認証と家族グループ/02_家族グループの状態遷移.md)まで着手。他は未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
+| 詳細設計 | [`10_認証と家族グループ/01_セッション設計.md`](../specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md)・[`02_家族グループの状態遷移.md`](../specs/03_detail-design/10_認証と家族グループ/02_家族グループの状態遷移.md)、[`30_買い物リスト/01_購入時の常備食反映.md`](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)・[`02_重複判定と一括操作の整合性.md`](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)まで着手。他は未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
 
 ## 完了済みの作業
 
