@@ -22,6 +22,15 @@ export interface StockDetail extends StockListItem {
   updatedByName: string | null;
 }
 
+// 消費済リストの1件分。表示に使う項目だけを持つ（13_消費済リスト.md 1節）。
+export interface ConsumedStockItem {
+  id: string;
+  name: string;
+  storageType: StorageType;
+  unit: UnitType | null;
+  consumedAt: Date;
+}
+
 // 作成者・更新者の表示名を一緒に取得するためのinclude句。退会した利用者はcreatedById等が
 // 空になるため、その場合はtoDetailでnullへ変換し「退会したメンバー」表示に委ねる。
 const detailInclude = {
@@ -206,6 +215,49 @@ export class StockService {
     }
   }
 
+  // 消費済リストを、消費済にした日付の新しい順で返す。
+  async listConsumed(userId: string): Promise<{ items: ConsumedStockItem[] }> {
+    const membership = await this.getMembership(userId);
+    const stocks = await this.prisma.stock.findMany({
+      where: { householdId: membership.householdId, deletedAt: null, consumedAt: { not: null } },
+      orderBy: { consumedAt: "desc" },
+    });
+    return { items: stocks.map(toConsumedItem) };
+  }
+
+  // 消費済食品の食品名・保存区分・単位を引き継ぎ、残数1・期限なしの新しい常備食を作る。
+  // 作成者・作り置き・メモは引き継がない（13_消費済リスト.md 2節）。
+  async reRegister(userId: string, id: string): Promise<StockDetail> {
+    const membership = await this.getMembership(userId);
+    const consumed = await this.prisma.stock.findFirst({
+      where: {
+        id,
+        householdId: membership.householdId,
+        deletedAt: null,
+        consumedAt: { not: null },
+      },
+    });
+    if (!consumed) {
+      throw stockNotFound();
+    }
+    const created = await this.prisma.stock.create({
+      data: {
+        householdId: membership.householdId,
+        name: consumed.name,
+        storageType: consumed.storageType,
+        quantity: 1,
+        unit: consumed.unit,
+        expiresOn: null,
+        isHomemade: false,
+        memo: null,
+        createdById: userId,
+        updatedById: userId,
+      },
+      include: detailInclude,
+    });
+    return toDetail(created);
+  }
+
   // 削除を元に戻す。5秒以内かどうかはフロントエンドが判断し、過ぎたら呼ばない。
   async restore(userId: string, id: string): Promise<void> {
     const membership = await this.getMembership(userId);
@@ -301,6 +353,18 @@ function toListItem(stock: StockRow): StockListItem {
     isHomemade: stock.isHomemade,
     createdAt: stock.createdAt,
     updatedAt: stock.updatedAt,
+  };
+}
+
+// 消費済リストに必要な項目だけをAPI応答へ変換する。
+function toConsumedItem(stock: StockRow & { consumedAt: Date | null }): ConsumedStockItem {
+  return {
+    id: stock.id,
+    name: stock.name,
+    storageType: stock.storageType,
+    unit: stock.unit,
+    // whereでconsumedAt: {not: null}を条件にしているため、ここでは必ず値が入っている。
+    consumedAt: stock.consumedAt as Date,
   };
 }
 

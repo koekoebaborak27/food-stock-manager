@@ -16,7 +16,12 @@ import {
 import type { Request } from "express";
 import { SessionGuard } from "../auth/session.guard";
 import type { SessionUser } from "../auth/session.service";
-import { StockService, type StockDetail, type StockListItem } from "./stock.service";
+import {
+  StockService,
+  type ConsumedStockItem,
+  type StockDetail,
+  type StockListItem,
+} from "./stock.service";
 import {
   validateConsumeInput,
   validateQuantityDelta,
@@ -67,6 +72,15 @@ export class StockController {
     @Query() query: Record<string, unknown>,
   ): Promise<{ items: StockListItem[] }> {
     return this.stocks.list(req.user.userId, validateStockListQuery(query));
+  }
+
+  // 消費済リストに表示する、未削除かつ消費済の食品を返す。
+  // ":id"のワイルドカードに"consumed"を奪われないよう、必ずこちらを先に定義する。
+  @Get("consumed")
+  async listConsumed(
+    @Req() req: Request & { user: SessionUser },
+  ): Promise<{ items: ConsumedStockItem[] }> {
+    return this.stocks.listConsumed(req.user.userId);
   }
 
   // 編集画面が表示する常備食1件を返す。
@@ -145,5 +159,15 @@ export class StockController {
     @Param("id") id: string,
   ): Promise<void> {
     return this.stocks.restore(req.user.userId, id);
+  }
+
+  // 消費済食品を、食品名・保存区分・単位を引き継いだ新しい常備食として登録し直す。
+  @Post(":id/re-register")
+  @HttpCode(HttpStatus.CREATED)
+  async reRegister(
+    @Req() req: Request & { user: SessionUser },
+    @Param("id") id: string,
+  ): Promise<StockDetail> {
+    return this.stocks.reRegister(req.user.userId, id);
   }
 }

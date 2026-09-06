@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildStockListQuery, formatQuantity, getExpiryLabel } from "./stock-list-helpers";
+import {
+  buildStockListQuery,
+  formatQuantity,
+  getExpiryLabel,
+  unitLabel,
+} from "./stock-list-helpers";
 
 /**
  * 対象: stock/stock-list-helpers
@@ -40,6 +45,13 @@ describe("stock/stock-list-helpers", () => {
     it("単位があればつなげ、なければ数字だけを返す", () => {
       expect(formatQuantity(3, "PIECE")).toBe("3個");
       expect(formatQuantity(3, null)).toBe("3");
+    });
+  });
+
+  describe("unitLabel", () => {
+    it("単位があれば文字にし、未選択ならnullを返す", () => {
+      expect(unitLabel("BAG")).toBe("袋");
+      expect(unitLabel(null)).toBeNull();
     });
   });
 });

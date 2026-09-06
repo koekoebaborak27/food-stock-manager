@@ -52,17 +52,23 @@ export function getExpiryLabel(expiresOn: string, now = new Date()): ExpiryLabel
   return { status: "NORMAL", label: `${expiry.getUTCMonth() + 1}/${expiry.getUTCDate()}まで` };
 }
 
+const UNIT_LABELS: Record<string, string> = {
+  PIECE: "個",
+  BAG: "袋",
+  PACK: "パック",
+  SERVING: "食分",
+  BOTTLE: "本",
+  GOTO: "ごと",
+};
+
 // 残数と任意の単位をつなげ、単位がなければ数字だけを返す。
 export function formatQuantity(quantity: number, unit: string | null): string {
-  const labels: Record<NonNullable<typeof unit>, string> = {
-    PIECE: "個",
-    BAG: "袋",
-    PACK: "パック",
-    SERVING: "食分",
-    BOTTLE: "本",
-    GOTO: "ごと",
-  };
-  return unit ? `${quantity}${labels[unit]}` : String(quantity);
+  return unit ? `${quantity}${unitLabel(unit)}` : String(quantity);
+}
+
+// 単位だけを文字にする。未選択なら出さない（消費済リストなど数を伴わない表示で使う）。
+export function unitLabel(unit: string | null): string | null {
+  return unit ? UNIT_LABELS[unit] : null;
 }
 
 // 現在時刻から日本時間の暦日を、日付だけの期限と比較できるUTCの午前0時へ変換する。
