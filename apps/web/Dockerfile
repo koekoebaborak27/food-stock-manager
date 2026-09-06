@@ -35,6 +35,12 @@ FROM base AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
+# apps/web/src/shared/api/server-fetch.tsはサーバーコンポーネントの実行時に
+# process.env.API_BASE_URLを直接読む（rewritesと違いビルド時埋め込みではない）。
+# ビルド用ステージのENVは実行用ステージに引き継がれないため、ここでも同じ値を設定する。
+ARG API_BASE_URL="http://localhost:3001"
+ENV API_BASE_URL=${API_BASE_URL}
+
 # standalone出力はモノレポの構成をそのまま写すため、apps/web/配下にサーバー本体が入る。
 COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
