@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-機能実装（タスク7）がすべて完了（直近: 7f-4の[PR #28](https://github.com/koekoebaborak27/food-stock-manager/pull/28)）。タスク8（web/apiのDockerfile）は作業ブランチ`codex/task8-dockerfiles`で作成し、`docker build`/`docker run`での動作確認まで完了（詳細は[履歴](history/2026-09-06_Dockerfileの作成.md)）。このブランチでPRを作成し、マージの指示を待つ。次はタスク9（Cloud Runへのデプロイ）。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
+機能実装（タスク7）がすべて完了（直近: 7f-4の[PR #28](https://github.com/koekoebaborak27/food-stock-manager/pull/28)）。タスク8（web/apiのDockerfile）は[PR #29](https://github.com/koekoebaborak27/food-stock-manager/pull/29)としてmainにマージ済み（詳細は[履歴](history/2026-09-06_Dockerfileの作成.md)）。次はタスク9（Cloud Runへのデプロイ）。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -85,7 +85,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `codex/task8-dockerfiles`（未マージ。機能実装（タスク7）はすべて`main`マージ済み） |
+| 作業ブランチ | `main`（タスク7・8のPRはすべてマージ済み） |
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` / `pnpm build` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
 | 本番 | 未構築。`apps/web/Dockerfile`・`apps/api/Dockerfile`を作成し、`docker build`→`docker run`でのローカル起動・DB疎通・web→apiのリバースプロキシ疎通まで確認済み（詳細は[履歴](history/2026-09-06_Dockerfileの作成.md)） |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
