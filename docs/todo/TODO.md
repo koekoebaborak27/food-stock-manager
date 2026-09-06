@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-タスク7d-4はPR作成済み・マージ待ち（ブランチ`codex/stock-detail-7d-4`）。マージ後は`7d以降`（消費済リスト画面など）に進む。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
+タスク7d-4まで`main`にマージ済み。次は`7d以降`（消費済リスト画面など）に進む。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -76,12 +76,12 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-3のPRはすべてマージ済み）。タスク7d-4は`codex/stock-detail-7d-4`でPR作成済み・マージ待ち |
+| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-4のPRはすべてマージ済み） |
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
 | 本番 | 未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
-| 実装 | タスク7a〜7c・7d-1〜7d-3完了（すべて`main`マージ済み）。タスク7d-4（PR作成済み・マージ待ち）で`apps/api`に残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）の4経路と、`GET /api/stocks/{id}`応答への作成者・更新者名の追加を実装した。`apps/web`に常備食の詳細画面（`/stocks/{id}`）を追加し、常備食リストのカードから開けるようにした。常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・家族グループ7経路・表示名変更と退会の2経路・Googleログイン・セッションCookieは7d-1〜7c・7a・7bで完了済み。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock`の6テーブル。消費済リスト画面・買い物リスト・期限通知は未着手 |
+| 実装 | タスク7a〜7c・7d-1〜7d-4完了（すべて`main`マージ済み）。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）に加え、残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）の4経路がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock`の6テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面に加え、常備食リスト画面・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`）が動く。消費済リスト画面・買い物リスト・期限通知は未着手 |
 | 詳細設計 | [`10_認証と家族グループ/01_セッション設計.md`](../specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md)・[`02_家族グループの状態遷移.md`](../specs/03_detail-design/10_認証と家族グループ/02_家族グループの状態遷移.md)まで着手。他は未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
 
 ## 完了済みの作業
