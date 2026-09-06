@@ -3,6 +3,15 @@
 import { ChevronDown, ChevronUp, Circle, CircleCheck, Menu, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +19,7 @@ import { ApiError } from "@/shared/api/api-error";
 import { clientApiFetch } from "@/shared/api/client-fetch";
 import { showErrorToast, showSuccessToast } from "@/shared/ui/toast";
 import { messageForCode } from "../error-messages";
-import type { ShoppingItemListItem, ShoppingItemListResponse } from "../types";
+import type { ShoppingItemListItem, ShoppingItemListResponse, StorageType } from "../types";
 import { validateShoppingItemName } from "../validation";
 
 // 商品名の直下にエラーを出す失敗（10_買い物リスト.md 7節）。それ以外は帯で伝える。
@@ -20,10 +29,24 @@ const INLINE_NAME_ERROR_CODES = new Set([
   "SHOPPING_ITEM_ALREADY_EXISTS",
 ]);
 
+// 購入確認シートの保存区分の選択肢（10_買い物リスト.md 4.1節）。
+const storageOptions: Array<{ value: StorageType; label: string }> = [
+  { value: "REFRIGERATED", label: "冷蔵" },
+  { value: "FROZEN", label: "冷凍" },
+  { value: "ROOM_TEMPERATURE", label: "常温" },
+];
+
+// 購入確認シートが持つ、対象商品と入力中の選択状態。
+interface PurchaseSheetState {
+  item: ShoppingItemListItem;
+  returnToStock: boolean;
+  storageType: StorageType;
+  quantityLimitError: string | null;
+}
+
 // 買い物リスト画面。下部タブから開き、未購入・購入済みに分けて商品を表示する
 // （docs/specs/02_basic-design/30_買い物リスト/10_買い物リスト.md）。
-// 購入状態の変更・削除は後続タスク（7e-4・7e-5）で扱うため、チェック・ゴミ箱は
-// 表示だけしてdisabledにしておく。
+// 削除は後続タスク（7e-5）で扱うため、ゴミ箱は表示だけしてdisabledにしておく。
 export function ShoppingListPage({ householdName }: { householdName: string }) {
   const [items, setItems] = useState<ShoppingItemListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +56,10 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
   const [itemName, setItemName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [isAdding, startAdding] = useTransition();
+  const [pendingItemId, setPendingItemId] = useState<string | null>(null);
+  const [purchaseSheet, setPurchaseSheet] = useState<PurchaseSheetState | null>(null);
+  const [isSubmittingPurchase, startSubmittingPurchase] = useTransition();
+  const [isConflictOpen, setIsConflictOpen] = useState(false);
 
   // 画面を開いたときだけ読み込む。開いたまま自動更新はしない（10_買い物リスト.md 6節）。
   useEffect(() => {
@@ -97,6 +124,94 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
     });
   }
 
+  // 未購入のチェックを入れたときに開く、購入確認シート（10_買い物リスト.md 4.1節）。
+  // 保存区分の初期値は、元の常備食が未削除なら消費済でもその保存区分、それ以外は冷蔵にする。
+  function openPurchaseSheet(item: ShoppingItemListItem): void {
+    setPurchaseSheet({
+      item,
+      returnToStock: true,
+      storageType: item.sourceStock?.storageType ?? "REFRIGERATED",
+      quantityLimitError: null,
+    });
+  }
+
+  // 購入済みのチェックを外す。確認は出さず、常備食も変更しない（10_買い物リスト.md 4節）。
+  function handleUnpurchase(item: ShoppingItemListItem): void {
+    setPendingItemId(item.id);
+    void (async () => {
+      try {
+        await clientApiFetch(`/api/shopping-items/${item.id}/purchased`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isPurchased: false, updatedAt: item.updatedAt }),
+        });
+        showSuccessToast("未購入に戻しました");
+        await loadItems();
+      } catch (error) {
+        await handlePurchaseError(error);
+      } finally {
+        setPendingItemId(null);
+      }
+    })();
+  }
+
+  // 購入確認シートの「購入済みにする」。常備食へ戻す選択と保存区分を合わせて送る
+  // （02_API.md 1節）。
+  function handleConfirmPurchase(): void {
+    if (!purchaseSheet) {
+      return;
+    }
+    const { item, returnToStock, storageType } = purchaseSheet;
+
+    startSubmittingPurchase(async () => {
+      try {
+        await clientApiFetch(`/api/shopping-items/${item.id}/purchased`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            returnToStock
+              ? { isPurchased: true, returnToStock: true, storageType, updatedAt: item.updatedAt }
+              : { isPurchased: true, returnToStock: false, updatedAt: item.updatedAt },
+          ),
+        });
+        setPurchaseSheet(null);
+        showSuccessToast(
+          returnToStock ? "購入済みにして、常備食に反映しました" : "購入済みにしました",
+        );
+        await loadItems();
+      } catch (error) {
+        if (error instanceof ApiError && error.code === "SOURCE_STOCK_QUANTITY_LIMIT") {
+          setPurchaseSheet((current) =>
+            current ? { ...current, quantityLimitError: messageForCode(error.code) } : current,
+          );
+          return;
+        }
+        setPurchaseSheet(null);
+        await handlePurchaseError(error);
+      }
+    });
+  }
+
+  // 購入状態の変更で共通の失敗処理。更新の競合はダイアログ、それ以外は帯で伝えて一覧を読み直す
+  // （10_買い物リスト.md 7節）。
+  async function handlePurchaseError(error: unknown): Promise<void> {
+    const code = error instanceof ApiError ? error.code : "SERVER_ERROR";
+    if (code === "SHOPPING_ITEM_UPDATE_CONFLICT") {
+      setIsConflictOpen(true);
+      return;
+    }
+    showErrorToast(messageForCode(code));
+    await loadItems();
+  }
+
+  // 更新競合ダイアログの「読み込み直す」。購入確認シートを閉じて最新の一覧を読み直す
+  // （10_買い物リスト.md 7節）。
+  async function handleReloadAfterConflict(): Promise<void> {
+    setIsConflictOpen(false);
+    setPurchaseSheet(null);
+    await loadItems();
+  }
+
   const unpurchased = items.filter((item) => !item.isPurchased);
   const purchased = items.filter((item) => item.isPurchased);
 
@@ -144,7 +259,14 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
         {!isLoading && !hasError && items.length > 0 ? (
           <>
             {unpurchased.length > 0 ? (
-              unpurchased.map((item) => <ShoppingItemRow key={item.id} item={item} />)
+              unpurchased.map((item) => (
+                <ShoppingItemRow
+                  key={item.id}
+                  item={item}
+                  disabled={pendingItemId === item.id}
+                  onToggle={() => openPurchaseSheet(item)}
+                />
+              ))
             ) : (
               <p className="py-4 text-center text-sm text-muted-foreground">
                 未購入の商品はありません。
@@ -168,8 +290,16 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
                 </button>
                 {isPurchasedOpen ? (
                   <div className="flex flex-col gap-3">
+                    <p className="px-1 text-xs text-muted-foreground">
+                      常備食の残数は変わりません。
+                    </p>
                     {purchased.map((item) => (
-                      <ShoppingItemRow key={item.id} item={item} />
+                      <ShoppingItemRow
+                        key={item.id}
+                        item={item}
+                        disabled={pendingItemId === item.id}
+                        onToggle={() => handleUnpurchase(item)}
+                      />
                     ))}
                   </div>
                 ) : null}
@@ -237,21 +367,152 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
           </div>
         </div>
       ) : null}
+
+      {purchaseSheet ? (
+        <div
+          className="fixed inset-0 z-20 flex items-end bg-foreground/20"
+          role="dialog"
+          aria-modal="true"
+          aria-label="購入の確認"
+        >
+          <div className="w-full rounded-t-xl bg-popover p-4">
+            <h2 className="mb-3 text-lg font-bold">
+              「{purchaseSheet.item.name}」を購入しましたか
+            </h2>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2" role="radiogroup" aria-label="常備食へ戻すか">
+                  <Button
+                    type="button"
+                    variant={purchaseSheet.returnToStock ? "default" : "secondary"}
+                    className="h-10 flex-1 rounded-full"
+                    role="radio"
+                    aria-checked={purchaseSheet.returnToStock}
+                    onClick={() =>
+                      setPurchaseSheet((current) =>
+                        current
+                          ? { ...current, returnToStock: true, quantityLimitError: null }
+                          : current,
+                      )
+                    }
+                  >
+                    常備食へ戻す
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={purchaseSheet.returnToStock ? "secondary" : "default"}
+                    className="h-10 flex-1 rounded-full"
+                    role="radio"
+                    aria-checked={!purchaseSheet.returnToStock}
+                    onClick={() =>
+                      setPurchaseSheet((current) =>
+                        current
+                          ? { ...current, returnToStock: false, quantityLimitError: null }
+                          : current,
+                      )
+                    }
+                  >
+                    常備食へ戻さない
+                  </Button>
+                </div>
+              </div>
+
+              {purchaseSheet.returnToStock ? (
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm leading-none font-medium">保存区分</span>
+                  <div className="flex gap-2" role="radiogroup" aria-label="保存区分">
+                    {storageOptions.map((option) => (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={
+                          purchaseSheet.storageType === option.value ? "default" : "secondary"
+                        }
+                        className="h-10 flex-1 rounded-full"
+                        role="radio"
+                        aria-checked={purchaseSheet.storageType === option.value}
+                        onClick={() =>
+                          setPurchaseSheet((current) =>
+                            current ? { ...current, storageType: option.value } : current,
+                          )
+                        }
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    元の常備食と同じ保存区分なら残数を1増やし、異なる場合は新しく登録します。元の常備食がない場合や消費済みの場合も新しく登録します。
+                  </p>
+                  {purchaseSheet.quantityLimitError ? (
+                    <p className="text-sm text-destructive">{purchaseSheet.quantityLimitError}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <Button
+                type="button"
+                disabled={isSubmittingPurchase}
+                className="h-11 w-full rounded-full"
+                onClick={handleConfirmPurchase}
+              >
+                購入済みにする
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isSubmittingPurchase}
+                className="h-11 w-full rounded-full"
+                onClick={() => setPurchaseSheet(null)}
+              >
+                キャンセル
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <AlertDialog open={isConflictOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              ご家族の誰かが先に変更しました。最新の内容を読み込みます。
+            </AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
+              最新の内容を読み込みます。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => void handleReloadAfterConflict()}>
+              読み込み直す
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
 
 // 商品1件の行。左端にチェック、中央に商品名、右端にゴミ箱を置く
 // （10_買い物リスト.md 2節）。押し間違えないよう両端に離す。
-// チェック・ゴミ箱の操作は7e-4・7e-5で有効にするため、ここではdisabledにする。
-function ShoppingItemRow({ item }: { item: ShoppingItemListItem }) {
+// ゴミ箱の操作は7e-5で有効にするため、ここではdisabledにする。
+function ShoppingItemRow({
+  item,
+  disabled,
+  onToggle,
+}: {
+  item: ShoppingItemListItem;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
       <Button
         type="button"
         variant="ghost"
         size="icon-lg"
-        disabled
+        disabled={disabled}
+        onClick={onToggle}
         aria-label={
           item.isPurchased ? `「${item.name}」を未購入に戻す` : `「${item.name}」を購入済みにする`
         }

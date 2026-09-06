@@ -1,11 +1,13 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
-import { Prisma, type Membership, type StorageType } from "@prisma/client";
+import { Prisma, type Membership, type Stock, type StorageType } from "@prisma/client";
 import { AppError, Errors } from "../common/errors/app-error";
 import { PrismaService } from "../prisma/prisma.service";
-import type { AddShoppingItemInput } from "./validation";
+import type { AddShoppingItemInput, PurchasedUpdateInput } from "./validation";
 
 // Prismaの一意索引違反のエラーコード（部分一意索引 ShoppingItem_household_name_unpurchased_key）。
 const UNIQUE_CONSTRAINT_ERROR_CODE = "P2002";
+// 常備食の残数の上限（00_買い物リスト共通.md 3節）。
+const MAX_STOCK_QUANTITY = 99;
 
 // 一覧に表示する、元の常備食の情報。存在しないか削除済みならnullにする。
 export interface ShoppingItemSourceStock {
@@ -98,6 +100,160 @@ export class ShoppingItemService {
     }
   }
 
+  // 購入状態を変える。未購入→購入済みでreturnToStockがtrueのときだけ、購入状態の変更と
+  // 常備食への反映を1つのトランザクションで行う（01_購入時の常備食反映.md）。
+  async setPurchased(
+    userId: string,
+    id: string,
+    input: PurchasedUpdateInput,
+    updatedAt: Date,
+  ): Promise<ShoppingItemListItem> {
+    const membership = await this.getMembership(userId);
+
+    if (!input.isPurchased) {
+      const result = await this.prisma.shoppingItem.updateMany({
+        where: {
+          id,
+          householdId: membership.householdId,
+          deletedAt: null,
+          isPurchased: true,
+          updatedAt,
+        },
+        data: { isPurchased: false, updatedById: userId },
+      });
+      if (result.count === 0) {
+        throw shoppingItemUpdateConflict();
+      }
+      return this.getById(membership.householdId, id);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const result = await tx.shoppingItem.updateMany({
+        where: {
+          id,
+          householdId: membership.householdId,
+          deletedAt: null,
+          isPurchased: false,
+          updatedAt,
+        },
+        data: { isPurchased: true, updatedById: userId },
+      });
+      if (result.count === 0) {
+        throw shoppingItemUpdateConflict();
+      }
+
+      if (!input.returnToStock) {
+        return;
+      }
+
+      const item = await tx.shoppingItem.findUniqueOrThrow({
+        where: { id },
+        select: { name: true, sourceStockId: true },
+      });
+      await this.returnToStock(tx, membership.householdId, userId, item, input.storageType);
+    });
+
+    return this.getById(membership.householdId, id);
+  }
+
+  // 購入時に常備食へ反映する（3節の判定→4節の残数+1、または2節の新規作成）。
+  private async returnToStock(
+    tx: Prisma.TransactionClient,
+    householdId: string,
+    userId: string,
+    item: { name: string; sourceStockId: string | null },
+    storageType: StorageType,
+  ): Promise<void> {
+    const sourceStock = item.sourceStockId
+      ? await tx.stock.findFirst({
+          where: { id: item.sourceStockId, householdId, deletedAt: null },
+        })
+      : null;
+
+    const canIncrement =
+      sourceStock !== null &&
+      sourceStock.consumedAt === null &&
+      sourceStock.storageType === storageType;
+
+    if (canIncrement) {
+      const incremented = await this.tryIncrement(
+        tx,
+        householdId,
+        userId,
+        sourceStock,
+        storageType,
+      );
+      if (incremented) {
+        return;
+      }
+    }
+
+    await tx.stock.create({
+      data: {
+        householdId,
+        name: sourceStock ? sourceStock.name : item.name,
+        storageType,
+        quantity: 1,
+        unit: null,
+        expiresOn: null,
+        isHomemade: false,
+        memo: null,
+        consumedAt: null,
+        deletedAt: null,
+        createdById: userId,
+        updatedById: userId,
+      },
+    });
+  }
+
+  // 元の常備食の残数を条件付きupdateManyで+1する。上限到達で失敗した場合は
+  // SOURCE_STOCK_QUANTITY_LIMITを投げ、それ以外(3節の条件が崩れていた場合)は
+  // falseを返して新規作成へ切り替えさせる（04節）。
+  private async tryIncrement(
+    tx: Prisma.TransactionClient,
+    householdId: string,
+    userId: string,
+    sourceStock: Stock,
+    storageType: StorageType,
+  ): Promise<boolean> {
+    const result = await tx.stock.updateMany({
+      where: {
+        id: sourceStock.id,
+        householdId,
+        deletedAt: null,
+        consumedAt: null,
+        storageType,
+        quantity: { lt: MAX_STOCK_QUANTITY },
+      },
+      data: { quantity: { increment: 1 }, updatedById: userId },
+    });
+    if (result.count === 1) {
+      return true;
+    }
+
+    const recheck = await tx.stock.findFirst({ where: { id: sourceStock.id, householdId } });
+    const stillMatches =
+      recheck !== null &&
+      recheck.deletedAt === null &&
+      recheck.consumedAt === null &&
+      recheck.storageType === storageType;
+    if (stillMatches) {
+      throw new AppError("SOURCE_STOCK_QUANTITY_LIMIT", HttpStatus.CONFLICT);
+    }
+    return false;
+  }
+
+  // 更新後の商品1件を一覧と同じ形で読み直す。
+  private async getById(householdId: string, id: string): Promise<ShoppingItemListItem> {
+    const item = await this.prisma.shoppingItem.findFirstOrThrow({
+      where: { id, householdId },
+      include: {
+        sourceStock: { select: { id: true, storageType: true, consumedAt: true, deletedAt: true } },
+      },
+    });
+    return toListItem(item);
+  }
+
   // 常備食からの追加元を確かめる。同じ家族グループに属し、削除されていない常備食だけを許す。
   // 消費済のStockは追加できる（00_買い物リスト共通.md 2節）ため、consumedAtは見ない。
   private async resolveSourceStockName(
@@ -137,6 +293,12 @@ export class ShoppingItemService {
 
 function shoppingItemAlreadyExists(): AppError {
   return new AppError("SHOPPING_ITEM_ALREADY_EXISTS", HttpStatus.CONFLICT);
+}
+
+// 対象がない・別世帯・削除済み・購入状態が食い違う・updatedAtが食い違うのいずれかを
+// 区別せずまとめる（01_購入時の常備食反映.md 1節）。
+function shoppingItemUpdateConflict(): AppError {
+  return new AppError("SHOPPING_ITEM_UPDATE_CONFLICT", HttpStatus.CONFLICT);
 }
 
 // 一覧画面に必要な項目だけをAPI応答へ変換する。sourceStockは削除済みならnullとして扱う
