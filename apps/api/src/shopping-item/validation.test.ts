@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateAddShoppingItemInput } from "./validation";
+import { validateAddShoppingItemInput, validatePurchasedInput } from "./validation";
 
 /**
  * 対象: shopping-item/validation validateAddShoppingItemInput
@@ -51,6 +51,77 @@ describe("shopping-item/validation validateAddShoppingItemInput", () => {
   describe("どちらも指定しなかったとき", () => {
     it("AppError(VALIDATION_ERROR) を投げる", () => {
       expect(() => validateAddShoppingItemInput({})).toThrow("VALIDATION_ERROR");
+    });
+  });
+});
+
+/**
+ * 対象: shopping-item/validation validatePurchasedInput
+ * 目的: isPurchased・returnToStock・storageTypeの組み合わせチェックが
+ *       02_API.mdの`code`どおりに働くことを担保する。
+ */
+describe("shopping-item/validation validatePurchasedInput", () => {
+  describe("isPurchasedがfalseのとき", () => {
+    it("returnToStock・storageTypeが無ければ受け付ける", () => {
+      expect(validatePurchasedInput({ isPurchased: false })).toEqual({ isPurchased: false });
+    });
+
+    it("returnToStockが送られていればAppError(INVALID_PURCHASE_UPDATE)を投げる", () => {
+      expect(() => validatePurchasedInput({ isPurchased: false, returnToStock: true })).toThrow(
+        "INVALID_PURCHASE_UPDATE",
+      );
+    });
+
+    it("storageTypeが送られていればAppError(INVALID_PURCHASE_UPDATE)を投げる", () => {
+      expect(() => validatePurchasedInput({ isPurchased: false, storageType: "FROZEN" })).toThrow(
+        "INVALID_PURCHASE_UPDATE",
+      );
+    });
+  });
+
+  describe("isPurchasedがtrueのとき", () => {
+    it("returnToStockがfalseならstorageType無しで受け付ける", () => {
+      expect(validatePurchasedInput({ isPurchased: true, returnToStock: false })).toEqual({
+        isPurchased: true,
+        returnToStock: false,
+      });
+    });
+
+    it("returnToStockがfalseでstorageTypeが送られていればAppError(INVALID_PURCHASE_UPDATE)を投げる", () => {
+      expect(() =>
+        validatePurchasedInput({ isPurchased: true, returnToStock: false, storageType: "FROZEN" }),
+      ).toThrow("INVALID_PURCHASE_UPDATE");
+    });
+
+    it("returnToStockがtrueで正しいstorageTypeなら受け付ける", () => {
+      expect(
+        validatePurchasedInput({ isPurchased: true, returnToStock: true, storageType: "FROZEN" }),
+      ).toEqual({ isPurchased: true, returnToStock: true, storageType: "FROZEN" });
+    });
+
+    it("returnToStockがtrueでstorageTypeが無ければAppError(INVALID_PURCHASE_UPDATE)を投げる", () => {
+      expect(() => validatePurchasedInput({ isPurchased: true, returnToStock: true })).toThrow(
+        "INVALID_PURCHASE_UPDATE",
+      );
+    });
+
+    it("returnToStockがtrueで不正なstorageTypeならAppError(INVALID_PURCHASE_UPDATE)を投げる", () => {
+      expect(() =>
+        validatePurchasedInput({ isPurchased: true, returnToStock: true, storageType: "OTHER" }),
+      ).toThrow("INVALID_PURCHASE_UPDATE");
+    });
+
+    it("returnToStockが真偽値でなければAppError(INVALID_PURCHASE_UPDATE)を投げる", () => {
+      expect(() => validatePurchasedInput({ isPurchased: true })).toThrow(
+        "INVALID_PURCHASE_UPDATE",
+      );
+    });
+  });
+
+  describe("isPurchasedが真偽値でないとき", () => {
+    it("AppError(VALIDATION_ERROR) を投げる", () => {
+      expect(() => validatePurchasedInput({})).toThrow("VALIDATION_ERROR");
+      expect(() => validatePurchasedInput({ isPurchased: "true" })).toThrow("VALIDATION_ERROR");
     });
   });
 });

@@ -11,6 +11,10 @@ const MESSAGES_BY_CODE: Record<string, string> = {
     "このデータは見つかりませんでした。ご家族の誰かが削除した可能性があります。",
   SOURCE_STOCK_NOT_FOUND:
     "このデータは見つかりませんでした。ご家族の誰かが削除した可能性があります。",
+  SOURCE_STOCK_QUANTITY_LIMIT:
+    "元の常備食は残数が99のため追加できません。「常備食へ戻さない」を選ぶか、常備食の残数を確認してください。",
+  INVALID_PURCHASE_UPDATE:
+    "入力内容を確認できませんでした。画面を読み込み直して、もう一度お試しください。",
   VALIDATION_ERROR:
     "入力内容を確認できませんでした。画面を読み込み直して、もう一度お試しください。",
 };
