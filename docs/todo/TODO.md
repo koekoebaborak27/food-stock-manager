@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-タスク7d-5・7e-1・7e-2・7e-3・7e-4・7e-5まで`main`にマージ済み（7e-2は当初のPR #20がスタックPRのbase branch消失で自動クローズされたため、リベースしてPR #21として作り直しマージした。経緯は[履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-スタックprのbase-branchが消えて自動クローズされた不具合)）。買い物リスト機能（7e）が完了。次は7f-1（期限通知: スキーマと通知時刻API）から着手する。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
+タスク7d-5・7e-1・7e-2・7e-3・7e-4・7e-5まで`main`にマージ済み（7e-2は当初のPR #20がスタックPRのbase branch消失で自動クローズされたため、リベースしてPR #21として作り直しマージした。経緯は[履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-スタックprのbase-branchが消えて自動クローズされた不具合)）。買い物リスト機能（7e）が完了。7f-1（期限通知: スキーマと通知時刻API）は[PR #25](https://github.com/koekoebaborak27/food-stock-manager/pull/25)としてオープン中（マージは未指示）。次は7f-2（PWAの土台・購読API）へ進む。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -66,7 +66,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
   - [x] 7e-3. 買い物リスト: 直接入力・常備食からの追加API/画面（重複判定を含む。常備食側の追加ボタンはこの後）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-直接入力常備食からの追加を実装した7e-3)
   - [x] 7e-4. 買い物リスト: 購入状態変更API・購入確認シート（[詳細設計: 購入時の常備食反映](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)を実装）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-購入状態変更を実装した7e-4)
   - [x] 7e-5. 買い物リスト: 削除・一括削除・復元のAPI・画面（[詳細設計: 重複判定と一括操作の整合性](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)の一括部分を実装）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-削除一括削除復元を実装した7e-5)
-  - [ ] 7f-1. 期限通知: スキーマ(`PushSubscription` `NotificationSetting`)と通知時刻API(`GET/PATCH /api/notification-settings`)
+  - [x] 7f-1. 期限通知: スキーマ(`PushSubscription` `NotificationSetting`)と通知時刻API(`GET/PATCH /api/notification-settings`)（2026-09-06）→ [履歴](history/2026-09-06_期限通知の実装.md#2026-09-06-スキーマと通知時刻apiを実装した7f-1)
   - [ ] 7f-2. 期限通知: PWAの土台(`manifest.json`・Service Worker登録・VAPID鍵)と購読API(`GET /api/push-subscriptions/me`・`POST /api/push-subscriptions`・`DELETE /api/push-subscriptions/me`)
   - [ ] 7f-3. 期限通知: 通知の設定画面(通知トグル・通知時刻選択)
   - [ ] 7f-4. 期限通知: 配信バッチAPI(`POST /api/internal/notifications/dispatch`)を実装する（[詳細設計: Web Push配信処理](../specs/03_detail-design/40_期限通知/01_Web_Push配信処理.md)を先に書く）
@@ -85,12 +85,12 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-5・7e-1〜7e-5のPRはすべてマージ済み） |
+| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-5・7e-1〜7e-5のPRはすべてマージ済み）。`codex/7f-1-notification-schema`（[PR #25](https://github.com/koekoebaborak27/food-stock-manager/pull/25)、7f-1、マージ未指示）が作業中 |
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
 | 本番 | 未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
-| 実装 | タスク7a〜7c・7d-1〜7d-5・7e-1〜7e-5完了（すべて`main`マージ済み）。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`。200で`{duplicateShoppingItem}`を返す）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）・消費済リストの取得（`GET /api/stocks/consumed`）・常備食への再登録（`POST /api/stocks/{id}/re-register`）に加え、買い物リストの一覧取得・追加（`GET/POST /api/shopping-items`）・購入状態変更（`PATCH /api/shopping-items/{id}/purchased`。常備食への反映を含む）・1件削除（`DELETE /api/shopping-items/{id}`）・購入済み一括削除（`DELETE /api/shopping-items/purchased`）・復元（`POST /api/shopping-items/restore`）がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock` `ShoppingItem`の7テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面、常備食リスト画面・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`、在庫切れシートから買い物リストへ追加可能）・消費済リスト画面（`/stocks/consumed`、買い物リストへ追加するボタン付き）に加え、買い物リスト画面（`/shopping-list`、一覧表示・FABからの直接入力追加・購入確認シート付きのチェック操作・削除/一括削除/復元）が動く。買い物リスト機能（7e）はこれで完了。常備食リスト/詳細のカートアイコンからの追加・期限通知は未着手 |
+| 実装 | タスク7a〜7c・7d-1〜7d-5・7e-1〜7e-5完了（すべて`main`マージ済み）。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`。200で`{duplicateShoppingItem}`を返す）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）・消費済リストの取得（`GET /api/stocks/consumed`）・常備食への再登録（`POST /api/stocks/{id}/re-register`）に加え、買い物リストの一覧取得・追加（`GET/POST /api/shopping-items`）・購入状態変更（`PATCH /api/shopping-items/{id}/purchased`。常備食への反映を含む）・1件削除（`DELETE /api/shopping-items/{id}`）・購入済み一括削除（`DELETE /api/shopping-items/purchased`）・復元（`POST /api/shopping-items/restore`）がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock` `ShoppingItem` `PushSubscription` `NotificationSetting`の9テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面、常備食リスト画面・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`、在庫切れシートから買い物リストへ追加可能）・消費済リスト画面（`/stocks/consumed`、買い物リストへ追加するボタン付き）に加え、買い物リスト画面（`/shopping-list`、一覧表示・FABからの直接入力追加・購入確認シート付きのチェック操作・削除/一括削除/復元）が動く。買い物リスト機能（7e）はこれで完了。常備食リスト/詳細のカートアイコンからの追加は未着手。期限通知は7f-1（`GET/PATCH /api/notification-settings`。世帯単位、既定値8:00）のみ実装済み（PR #25、`apps/web`側の画面は未着手） |
 | 詳細設計 | [`10_認証と家族グループ/01_セッション設計.md`](../specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md)・[`02_家族グループの状態遷移.md`](../specs/03_detail-design/10_認証と家族グループ/02_家族グループの状態遷移.md)、[`30_買い物リスト/01_購入時の常備食反映.md`](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)・[`02_重複判定と一括操作の整合性.md`](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)まで着手。他は未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
 
 ## 完了済みの作業
