@@ -20,7 +20,11 @@ import { showErrorToast, showSuccessToast } from "@/shared/ui/toast";
 import { validateName } from "@/shared/validation/name";
 import { updateDisplayNameAction } from "../actions";
 import { GENERIC_ERROR_MESSAGE } from "../error-messages";
-import { LogoutButton } from "@/modules/auth";
+// authモジュールの入口(index.ts)はサーバー専用のgetSessionも公開しており、
+// クライアントコンポーネントからそこ経由でLogoutButtonを読み込むと、
+// バンドラーがserver-onlyのimportまで辿って本番ビルドを失敗させる。
+// そのためここだけはLogoutButton自体を直接読み込む。
+import { LogoutButton } from "@/modules/auth/ui/LogoutButton";
 
 interface AccountSettingsFormProps {
   displayName: string;
