@@ -35,8 +35,10 @@ gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
 
 1. [Supabase](https://supabase.com/) にログインし、「New project」を押す。
 2. プロジェクト名に `<プロジェクト名>`、リージョンに東京に近いもの（`Northeast Asia (Tokyo)` があればそれ）を選び、データベースパスワード（`<DBパスワード>`）を設定して作成する。
-3. 作成後、「Project Settings」→「Database」→「Connection string」から接続文字列を確認する。**Cloud Run はリクエストごとに接続が増減するサーバーレス環境のため、通常の接続文字列（Direct connection）ではなく、コネクションプーリング用の接続文字列（Transaction pooler、ポート6543）を使う。**
-4. `DATABASE_URL` の実値（`postgresql://postgres.<Supabaseプロジェクトref>:<DBパスワード>@<プーラーのホスト名>:6543/postgres`の形）は、[03_Secret_Manager](infra_design_03_Secret_Manager.md)で Secret Manager に登録する。
+3. 作成後、プロジェクト画面右上の「Connect」ボタン→「ORM」タブ→「Prisma」を選ぶと、Prisma 向けの接続文字列が2本表示される。**この2本をそのまま使う。**
+   - `DATABASE_URL`（トランザクションプーラー、ポート6543）— アプリの通常アクセス用。Cloud Run はリクエストごとに接続が増減するサーバーレス環境のため、直接接続ではなくこちらを使う。
+   - `DIRECT_URL`（セッションプーラー）— マイグレーション（`prisma migrate deploy`）専用。トランザクションプーラーはプリペアドステートメントに対応せず DDL の実行に使えないため分けている（[`prisma/schema.prisma`](../../../prisma/schema.prisma)の`directUrl`。詳細は[`docs/prisma_operations.md` 3-1節](../../prisma_operations.md#3-1-適用方法)）。
+4. `DATABASE_URL` と `DIRECT_URL` の実値は、[03_Secret_Manager](infra_design_03_Secret_Manager.md)で Secret Manager に登録する。
 
 ## 5. Google OAuth クライアントの作成
 

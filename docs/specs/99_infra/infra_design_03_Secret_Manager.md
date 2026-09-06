@@ -8,10 +8,11 @@
 
 | シークレット名 | `.env.example` のキー | 使うサービス |
 | --- | --- | --- |
-| `database-url` | `DATABASE_URL` | api（[01_事前準備 4節](infra_design_01_事前準備.md#4-supabase-プロジェクトの作成)で取得したプーラー接続文字列） |
+| `database-url` | `DATABASE_URL` | api（[01_事前準備 4節](infra_design_01_事前準備.md#4-supabase-プロジェクトの作成)で取得したトランザクションプーラーの接続文字列） |
+| `direct-url` | `DIRECT_URL` | api（同じく4節で取得したセッションプーラーの接続文字列。マイグレーション実行時のみ使う） |
 | `google-client-id` | `GOOGLE_CLIENT_ID` | api |
 | `google-client-secret` | `GOOGLE_CLIENT_SECRET` | api |
-| `google-callback-url` | `GOOGLE_CALLBACK_URL` | api（値は `https://<webサービスURL>/api/auth/google/callback`。[04_Cloud_Run 3節](infra_design_04_Cloud_Run.md#3-google-oauth-リダイレクト-uri-の確定)で web の URL 確定後に登録する） |
+| `google-callback-url` | `GOOGLE_CALLBACK_URL` | api（値は `https://<webサービスURL>/api/auth/google/callback`。[04_Cloud_Run 4節](infra_design_04_Cloud_Run.md#4-google-oauth-リダイレクト-uri-の確定)で web の URL 確定後に登録する） |
 | `web-base-url` | `WEB_BASE_URL` | api（値は `https://<webサービスURL>`） |
 | `vapid-public-key` | `VAPID_PUBLIC_KEY` | api |
 | `vapid-private-key` | `VAPID_PRIVATE_KEY` | api |
@@ -34,7 +35,7 @@ printf '%s' '<実際の値>' | gcloud secrets create database-url --data-file=-
 printf '%s' '<新しい値>' | gcloud secrets versions add database-url --data-file=-
 ```
 
-上記を9個のシークレットぶん繰り返す。
+上記を、`direct-url` を除く9個のシークレットぶん繰り返す（`direct-url` はマイグレーション実行時にローカルから手動で参照するだけで Cloud Run へは渡さないため、[3節](#3-cloud-run-サービスアカウントへの権限付与)の権限付与は不要）。
 
 ## 3. Cloud Run サービスアカウントへの権限付与
 
@@ -46,4 +47,4 @@ gcloud secrets add-iam-policy-binding database-url \
   --role="roles/secretmanager.secretAccessor"
 ```
 
-9個のシークレットすべてに同じ付与を行う。実際に Cloud Run へ渡す指定は [04_Cloud_Run](infra_design_04_Cloud_Run.md) の `--set-secrets` オプションで行う。
+`direct-url` を除く9個のシークレットに同じ付与を行う。実際に Cloud Run へ渡す指定は [04_Cloud_Run](infra_design_04_Cloud_Run.md) の `--set-secrets` オプションで行う。
