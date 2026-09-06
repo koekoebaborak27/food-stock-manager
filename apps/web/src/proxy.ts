@@ -19,5 +19,7 @@ export function proxy(request: NextRequest): NextResponse {
 export const config = {
   // public/ 配下の画像（例: /images/...）はログインしていなくても配信できる必要がある
   // （ログイン画面の背景写真など）。認証チェックの対象から外す。
-  matcher: ["/((?!api|_next|favicon.ico|images).*)"],
+  // manifest.json・sw.js・icons/ も同じ理由に加え、Service Workerの登録はリダイレクトされた
+  // 応答を許さない仕様のため、未ログインでもそのまま返す必要がある。
+  matcher: ["/((?!api|_next|favicon.ico|images|manifest\\.json|sw\\.js|icons).*)"],
 };

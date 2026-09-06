@@ -3,11 +3,27 @@ import type { ReactNode } from "react";
 
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { ServiceWorkerRegister } from "@/modules/push-notification";
 
 // ブラウザのタブや、ホーム画面に追加したときに表示される情報。
+// PWAとして端末に保存するのは画面の外枠・アイコン・スタイルまで
+// （docs/specs/01_requirements/00_共通/01_プロダクト共通.md）。
 export const metadata: Metadata = {
   title: "おうちde常備食",
   description: "家族で作り置きと食品ストックを共有する",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "おうちde常備食",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 // スマートフォンでの表示幅の指定。画面の横幅に合わせて等倍で表示する。
@@ -26,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         {children}
         <Toaster position="bottom-center" />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
