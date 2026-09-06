@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -17,10 +18,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/shared/api/api-error";
 import { clientApiFetch } from "@/shared/api/client-fetch";
-import { showErrorToast, showSuccessToast } from "@/shared/ui/toast";
+import { showErrorToast, showSuccessToast, showUndoToast } from "@/shared/ui/toast";
 import { messageForCode } from "../error-messages";
 import type { ShoppingItemListItem, ShoppingItemListResponse, StorageType } from "../types";
 import { validateShoppingItemName } from "../validation";
+
+// DELETE .../{id}・DELETE .../purchased の応答（02_API.md 1節）。復元にそのまま使う
+// updatedAtを含む。
+interface ShoppingItemDeleteResponse {
+  items: Array<{ id: string; updatedAt: string }>;
+}
 
 // 商品名の直下にエラーを出す失敗（10_買い物リスト.md 7節）。それ以外は帯で伝える。
 const INLINE_NAME_ERROR_CODES = new Set([
@@ -46,7 +53,6 @@ interface PurchaseSheetState {
 
 // 買い物リスト画面。下部タブから開き、未購入・購入済みに分けて商品を表示する
 // （docs/specs/02_basic-design/30_買い物リスト/10_買い物リスト.md）。
-// 削除は後続タスク（7e-5）で扱うため、ゴミ箱は表示だけしてdisabledにしておく。
 export function ShoppingListPage({ householdName }: { householdName: string }) {
   const [items, setItems] = useState<ShoppingItemListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +66,12 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
   const [purchaseSheet, setPurchaseSheet] = useState<PurchaseSheetState | null>(null);
   const [isSubmittingPurchase, startSubmittingPurchase] = useTransition();
   const [isConflictOpen, setIsConflictOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ShoppingItemListItem | null>(null);
+  const [bulkDeleteTargets, setBulkDeleteTargets] = useState<Array<{
+    id: string;
+    updatedAt: string;
+  }> | null>(null);
+  const [isBulkDeleting, startBulkDeleting] = useTransition();
 
   // 画面を開いたときだけ読み込む。開いたまま自動更新はしない（10_買い物リスト.md 6節）。
   useEffect(() => {
@@ -148,7 +160,7 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
         showSuccessToast("未購入に戻しました");
         await loadItems();
       } catch (error) {
-        await handlePurchaseError(error);
+        await handleActionError(error);
       } finally {
         setPendingItemId(null);
       }
@@ -187,14 +199,14 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
           return;
         }
         setPurchaseSheet(null);
-        await handlePurchaseError(error);
+        await handleActionError(error);
       }
     });
   }
 
-  // 購入状態の変更で共通の失敗処理。更新の競合はダイアログ、それ以外は帯で伝えて一覧を読み直す
-  // （10_買い物リスト.md 7節）。
-  async function handlePurchaseError(error: unknown): Promise<void> {
+  // 購入状態の変更・削除・復元で共通の失敗処理。更新の競合はダイアログ、それ以外は帯で伝えて
+  // 一覧を読み直す（10_買い物リスト.md 7節）。
+  async function handleActionError(error: unknown): Promise<void> {
     const code = error instanceof ApiError ? error.code : "SERVER_ERROR";
     if (code === "SHOPPING_ITEM_UPDATE_CONFLICT") {
       setIsConflictOpen(true);
@@ -204,12 +216,95 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
     await loadItems();
   }
 
-  // 更新競合ダイアログの「読み込み直す」。購入確認シートを閉じて最新の一覧を読み直す
+  // 更新競合ダイアログの「読み込み直す」。開いているシートを閉じて最新の一覧を読み直す
   // （10_買い物リスト.md 7節）。
   async function handleReloadAfterConflict(): Promise<void> {
     setIsConflictOpen(false);
     setPurchaseSheet(null);
     await loadItems();
+  }
+
+  // ゴミ箱を押して確認ダイアログを開く（10_買い物リスト.md 5節）。
+  function openDeleteDialog(item: ShoppingItemListItem): void {
+    setDeleteTarget(item);
+  }
+
+  // 削除確認の「削除する」。削除できたら一覧から外し、「元に戻す」付きの帯を5秒出す
+  // （10_買い物リスト.md 5節）。
+  function handleConfirmDelete(): void {
+    if (!deleteTarget) {
+      return;
+    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setPendingItemId(target.id);
+    void (async () => {
+      try {
+        const response = await clientApiFetch<ShoppingItemDeleteResponse>(
+          `/api/shopping-items/${target.id}`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ updatedAt: target.updatedAt }),
+          },
+        );
+        await loadItems();
+        showUndoToast(`「${target.name}」を削除しました`, () => void restoreItems(response.items));
+      } catch (error) {
+        await handleActionError(error);
+      } finally {
+        setPendingItemId(null);
+      }
+    })();
+  }
+
+  // 「元に戻す」。1件・一括削除のどちらの取り消しにも使う（10_買い物リスト.md 5節）。
+  async function restoreItems(items: Array<{ id: string; updatedAt: string }>): Promise<void> {
+    try {
+      await clientApiFetch("/api/shopping-items/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      showSuccessToast("元に戻しました");
+      await loadItems();
+    } catch (error) {
+      await handleActionError(error);
+    }
+  }
+
+  // 購入済み見出しの「購入済みを削除する」。確認を開いた時点の対象ID・updatedAtを保持し、
+  // 確認後に増えた商品は削除しない（10_買い物リスト.md 5節）。
+  function openBulkDeleteDialog(): void {
+    setBulkDeleteTargets(purchased.map((item) => ({ id: item.id, updatedAt: item.updatedAt })));
+  }
+
+  // 一括削除確認の「削除する」。
+  function handleConfirmBulkDelete(): void {
+    if (!bulkDeleteTargets) {
+      return;
+    }
+    const targets = bulkDeleteTargets;
+    setBulkDeleteTargets(null);
+    startBulkDeleting(async () => {
+      try {
+        const response = await clientApiFetch<ShoppingItemDeleteResponse>(
+          "/api/shopping-items/purchased",
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items: targets }),
+          },
+        );
+        await loadItems();
+        showUndoToast(
+          `購入済みの商品を${targets.length}件削除しました`,
+          () => void restoreItems(response.items),
+        );
+      } catch (error) {
+        await handleActionError(error);
+      }
+    });
   }
 
   const unpurchased = items.filter((item) => !item.isPurchased);
@@ -265,6 +360,7 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
                   item={item}
                   disabled={pendingItemId === item.id}
                   onToggle={() => openPurchaseSheet(item)}
+                  onDelete={() => openDeleteDialog(item)}
                 />
               ))
             ) : (
@@ -275,19 +371,29 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
 
             {purchased.length > 0 ? (
               <div className="mt-2">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between rounded-md px-1 py-2 text-sm font-bold"
-                  aria-expanded={isPurchasedOpen}
-                  onClick={() => setIsPurchasedOpen((value) => !value)}
-                >
-                  <span>購入済み（{purchased.length}件）</span>
-                  {isPurchasedOpen ? (
-                    <ChevronUp aria-hidden="true" className="size-4" />
-                  ) : (
-                    <ChevronDown aria-hidden="true" className="size-4" />
-                  )}
-                </button>
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    className="flex flex-1 items-center gap-1 rounded-md px-1 py-2 text-sm font-bold"
+                    aria-expanded={isPurchasedOpen}
+                    onClick={() => setIsPurchasedOpen((value) => !value)}
+                  >
+                    <span>購入済み（{purchased.length}件）</span>
+                    {isPurchasedOpen ? (
+                      <ChevronUp aria-hidden="true" className="size-4" />
+                    ) : (
+                      <ChevronDown aria-hidden="true" className="size-4" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="shrink-0 px-1 py-2 text-xs text-muted-foreground underline"
+                    disabled={isBulkDeleting}
+                    onClick={openBulkDeleteDialog}
+                  >
+                    購入済みを削除する
+                  </button>
+                </div>
                 {isPurchasedOpen ? (
                   <div className="flex flex-col gap-3">
                     <p className="px-1 text-xs text-muted-foreground">
@@ -299,6 +405,7 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
                         item={item}
                         disabled={pendingItemId === item.id}
                         onToggle={() => handleUnpurchase(item)}
+                        onDelete={() => openDeleteDialog(item)}
                       />
                     ))}
                   </div>
@@ -489,21 +596,69 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>「{deleteTarget?.name}」を削除しますか</AlertDialogTitle>
+            <AlertDialogDescription>
+              買い物リストから消えます。常備食には何もしません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>削除する</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkDeleteTargets !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBulkDeleteTargets(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>購入済みの商品をすべて削除しますか</AlertDialogTitle>
+            <AlertDialogDescription>
+              購入済みの商品が買い物リストから消えます。常備食には何もしません。対象：
+              {bulkDeleteTargets?.length ?? 0}件
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction disabled={isBulkDeleting} onClick={handleConfirmBulkDelete}>
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
 
 // 商品1件の行。左端にチェック、中央に商品名、右端にゴミ箱を置く
 // （10_買い物リスト.md 2節）。押し間違えないよう両端に離す。
-// ゴミ箱の操作は7e-5で有効にするため、ここではdisabledにする。
 function ShoppingItemRow({
   item,
   disabled,
   onToggle,
+  onDelete,
 }: {
   item: ShoppingItemListItem;
   disabled: boolean;
   onToggle: () => void;
+  onDelete: () => void;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
@@ -528,7 +683,8 @@ function ShoppingItemRow({
         type="button"
         variant="ghost"
         size="icon-lg"
-        disabled
+        disabled={disabled}
+        onClick={onDelete}
         aria-label={`「${item.name}」を削除する`}
       >
         <Trash2 aria-hidden="true" />

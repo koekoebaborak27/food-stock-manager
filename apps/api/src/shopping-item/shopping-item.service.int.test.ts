@@ -503,3 +503,262 @@ describe("shopping-item/ShoppingItemService setPurchased", () => {
     });
   });
 });
+
+/**
+ * 対象: shopping-item/ShoppingItemService remove
+ * 目的: 1件削除が論理削除であること、updatedAtの不一致・別世帯・存在しない場合を
+ *       正しく404/409に出し分けることを実DBで担保する。
+ */
+describe("shopping-item/ShoppingItemService remove", () => {
+  const prisma = new PrismaService();
+  const service = new ShoppingItemService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("deletedAtを設定し、削除後のupdatedAtを返す", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const item = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳" },
+    });
+
+    const result = await service.remove(user.id, item.id, item.updatedAt);
+
+    expect(result.items).toEqual([{ id: item.id, updatedAt: expect.any(Date) }]);
+    const deleted = await prisma.shoppingItem.findUniqueOrThrow({ where: { id: item.id } });
+    expect(deleted.deletedAt).not.toBeNull();
+  });
+
+  it("updatedAtが食い違うとAppError(SHOPPING_ITEM_UPDATE_CONFLICT)を投げ、削除しない", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const item = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳" },
+    });
+
+    await expect(
+      service.remove(user.id, item.id, new Date(item.updatedAt.getTime() - 1000)),
+    ).rejects.toMatchObject({ code: "SHOPPING_ITEM_UPDATE_CONFLICT" });
+    const unchanged = await prisma.shoppingItem.findUniqueOrThrow({ where: { id: item.id } });
+    expect(unchanged.deletedAt).toBeNull();
+  });
+
+  it("存在しない・別世帯・削除済みのidはAppError(SHOPPING_ITEM_NOT_FOUND)を投げる", async () => {
+    const user = await createUser(prisma);
+    await createHouseholdWithAdmin(prisma, user.id);
+    const otherUser = await createUser(prisma);
+    const otherHousehold = await createHouseholdWithAdmin(prisma, otherUser.id);
+    const otherItem = await prisma.shoppingItem.create({
+      data: { householdId: otherHousehold.id, name: "他世帯の商品" },
+    });
+
+    await expect(
+      service.remove(user.id, "00000000-0000-0000-0000-000000000000", new Date()),
+    ).rejects.toMatchObject({ code: "SHOPPING_ITEM_NOT_FOUND" });
+    await expect(service.remove(user.id, otherItem.id, otherItem.updatedAt)).rejects.toMatchObject({
+      code: "SHOPPING_ITEM_NOT_FOUND",
+    });
+  });
+
+  it("家族グループに所属していないときはAppError(NO_HOUSEHOLD)を投げる", async () => {
+    const user = await createUser(prisma);
+
+    await expect(service.remove(user.id, "not-exist", new Date())).rejects.toMatchObject({
+      code: "NO_HOUSEHOLD",
+    });
+  });
+});
+
+/**
+ * 対象: shopping-item/ShoppingItemService removePurchased
+ * 目的: 購入済みの一括削除が全件一致確認の後にまとめて行われること、
+ *       1件でも対象外・競合があれば全件変更しないことを実DBで担保する。
+ */
+describe("shopping-item/ShoppingItemService removePurchased", () => {
+  const prisma = new PrismaService();
+  const service = new ShoppingItemService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("全件が購入済み・未削除・updatedAt一致のときだけまとめて削除する", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const first = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳", isPurchased: true },
+    });
+    const second = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "パン", isPurchased: true },
+    });
+
+    const result = await service.removePurchased(user.id, [
+      { id: first.id, updatedAt: first.updatedAt },
+      { id: second.id, updatedAt: second.updatedAt },
+    ]);
+
+    expect(result.items.map((item) => item.id).sort()).toEqual([first.id, second.id].sort());
+    const remaining = await prisma.shoppingItem.findMany({
+      where: { householdId: household.id, deletedAt: null },
+    });
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("1件でもupdatedAtが食い違うとAppError(SHOPPING_ITEM_UPDATE_CONFLICT)を投げ、全件変更しない", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const first = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳", isPurchased: true },
+    });
+    const second = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "パン", isPurchased: true },
+    });
+
+    await expect(
+      service.removePurchased(user.id, [
+        { id: first.id, updatedAt: first.updatedAt },
+        { id: second.id, updatedAt: new Date(second.updatedAt.getTime() - 1000) },
+      ]),
+    ).rejects.toMatchObject({ code: "SHOPPING_ITEM_UPDATE_CONFLICT" });
+    const remaining = await prisma.shoppingItem.findMany({
+      where: { householdId: household.id, deletedAt: null },
+    });
+    expect(remaining).toHaveLength(2);
+  });
+
+  it("1件でも未購入が混ざるとAppError(SHOPPING_ITEM_UPDATE_CONFLICT)を投げる", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const purchased = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳", isPurchased: true },
+    });
+    const unpurchased = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "パン", isPurchased: false },
+    });
+
+    await expect(
+      service.removePurchased(user.id, [
+        { id: purchased.id, updatedAt: purchased.updatedAt },
+        { id: unpurchased.id, updatedAt: unpurchased.updatedAt },
+      ]),
+    ).rejects.toMatchObject({ code: "SHOPPING_ITEM_UPDATE_CONFLICT" });
+  });
+
+  it("存在しない・別世帯のidが混ざるとAppError(SHOPPING_ITEM_NOT_FOUND)を投げ、全件変更しない", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const item = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳", isPurchased: true },
+    });
+
+    await expect(
+      service.removePurchased(user.id, [
+        { id: item.id, updatedAt: item.updatedAt },
+        { id: "00000000-0000-0000-0000-000000000000", updatedAt: new Date() },
+      ]),
+    ).rejects.toMatchObject({ code: "SHOPPING_ITEM_NOT_FOUND" });
+    const unchanged = await prisma.shoppingItem.findUniqueOrThrow({ where: { id: item.id } });
+    expect(unchanged.deletedAt).toBeNull();
+  });
+
+  it("家族グループに所属していないときはAppError(NO_HOUSEHOLD)を投げる", async () => {
+    const user = await createUser(prisma);
+
+    await expect(
+      service.removePurchased(user.id, [{ id: "not-exist", updatedAt: new Date() }]),
+    ).rejects.toMatchObject({ code: "NO_HOUSEHOLD" });
+  });
+});
+
+/**
+ * 対象: shopping-item/ShoppingItemService restore
+ * 目的: 削除の取り消しがdeletedAtをnullに戻すこと、全件一致確認が
+ *       一括削除と同じ規則で働くことを実DBで担保する。
+ */
+describe("shopping-item/ShoppingItemService restore", () => {
+  const prisma = new PrismaService();
+  const service = new ShoppingItemService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("全件が削除済み・updatedAt一致のときだけまとめて復元する", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const first = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳", deletedAt: new Date() },
+    });
+    const second = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "パン", deletedAt: new Date() },
+    });
+
+    const result = await service.restore(user.id, [
+      { id: first.id, updatedAt: first.updatedAt },
+      { id: second.id, updatedAt: second.updatedAt },
+    ]);
+
+    expect(result.items.map((item) => item.id).sort()).toEqual([first.id, second.id].sort());
+    const restored = await prisma.shoppingItem.findMany({
+      where: { householdId: household.id, deletedAt: null },
+    });
+    expect(restored).toHaveLength(2);
+  });
+
+  it("削除済みでないものが混ざるとAppError(SHOPPING_ITEM_UPDATE_CONFLICT)を投げ、全件変更しない", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const deleted = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳", deletedAt: new Date() },
+    });
+    const notDeleted = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "パン" },
+    });
+
+    await expect(
+      service.restore(user.id, [
+        { id: deleted.id, updatedAt: deleted.updatedAt },
+        { id: notDeleted.id, updatedAt: notDeleted.updatedAt },
+      ]),
+    ).rejects.toMatchObject({ code: "SHOPPING_ITEM_UPDATE_CONFLICT" });
+    const stillDeleted = await prisma.shoppingItem.findUniqueOrThrow({ where: { id: deleted.id } });
+    expect(stillDeleted.deletedAt).not.toBeNull();
+  });
+
+  it("存在しない・別世帯のidが混ざるとAppError(SHOPPING_ITEM_NOT_FOUND)を投げる", async () => {
+    const user = await createUser(prisma);
+    const household = await createHouseholdWithAdmin(prisma, user.id);
+    const deleted = await prisma.shoppingItem.create({
+      data: { householdId: household.id, name: "牛乳", deletedAt: new Date() },
+    });
+
+    await expect(
+      service.restore(user.id, [
+        { id: deleted.id, updatedAt: deleted.updatedAt },
+        { id: "00000000-0000-0000-0000-000000000000", updatedAt: new Date() },
+      ]),
+    ).rejects.toMatchObject({ code: "SHOPPING_ITEM_NOT_FOUND" });
+  });
+
+  it("家族グループに所属していないときはAppError(NO_HOUSEHOLD)を投げる", async () => {
+    const user = await createUser(prisma);
+
+    await expect(
+      service.restore(user.id, [{ id: "not-exist", updatedAt: new Date() }]),
+    ).rejects.toMatchObject({ code: "NO_HOUSEHOLD" });
+  });
+});
