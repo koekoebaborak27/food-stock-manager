@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { validateAddShoppingItemInput, validatePurchasedInput } from "./validation";
+import {
+  validateAddShoppingItemInput,
+  validateBulkItemsInput,
+  validatePurchasedInput,
+} from "./validation";
+
+const VALID_ID_1 = "11111111-1111-1111-1111-111111111111";
+const VALID_ID_2 = "22222222-2222-2222-2222-222222222222";
 
 /**
  * 対象: shopping-item/validation validateAddShoppingItemInput
@@ -123,5 +130,58 @@ describe("shopping-item/validation validatePurchasedInput", () => {
       expect(() => validatePurchasedInput({})).toThrow("VALIDATION_ERROR");
       expect(() => validatePurchasedInput({ isPurchased: "true" })).toThrow("VALIDATION_ERROR");
     });
+  });
+});
+
+/**
+ * 対象: shopping-item/validation validateBulkItemsInput
+ * 目的: 一括削除・復元のitemsが1件以上・ID重複なし・UUID形式・日時として解釈できることを
+ *       確かめ、崩れていればすべてVALIDATION_ERRORにすることを担保する
+ *       （02_API.md 1節）。
+ */
+describe("shopping-item/validation validateBulkItemsInput", () => {
+  it("id・updatedAtが正しい要素を1件以上受け付ける", () => {
+    expect(
+      validateBulkItemsInput({
+        items: [
+          { id: VALID_ID_1, updatedAt: "2026-01-01T00:00:00.000Z" },
+          { id: VALID_ID_2, updatedAt: "2026-01-02T00:00:00.000Z" },
+        ],
+      }),
+    ).toEqual([
+      { id: VALID_ID_1, updatedAt: new Date("2026-01-01T00:00:00.000Z") },
+      { id: VALID_ID_2, updatedAt: new Date("2026-01-02T00:00:00.000Z") },
+    ]);
+  });
+
+  it("itemsが配列でない、または空配列ならAppError(VALIDATION_ERROR)を投げる", () => {
+    expect(() => validateBulkItemsInput({})).toThrow("VALIDATION_ERROR");
+    expect(() => validateBulkItemsInput({ items: [] })).toThrow("VALIDATION_ERROR");
+    expect(() => validateBulkItemsInput({ items: "not-array" })).toThrow("VALIDATION_ERROR");
+  });
+
+  it("idがUUID形式でなければAppError(VALIDATION_ERROR)を投げる", () => {
+    expect(() =>
+      validateBulkItemsInput({
+        items: [{ id: "not-uuid", updatedAt: "2026-01-01T00:00:00.000Z" }],
+      }),
+    ).toThrow("VALIDATION_ERROR");
+  });
+
+  it("idが重複していればAppError(VALIDATION_ERROR)を投げる", () => {
+    expect(() =>
+      validateBulkItemsInput({
+        items: [
+          { id: VALID_ID_1, updatedAt: "2026-01-01T00:00:00.000Z" },
+          { id: VALID_ID_1, updatedAt: "2026-01-02T00:00:00.000Z" },
+        ],
+      }),
+    ).toThrow("VALIDATION_ERROR");
+  });
+
+  it("updatedAtが日時として解釈できなければAppError(VALIDATION_ERROR)を投げる", () => {
+    expect(() =>
+      validateBulkItemsInput({ items: [{ id: VALID_ID_1, updatedAt: "not-a-date" }] }),
+    ).toThrow("VALIDATION_ERROR");
   });
 });

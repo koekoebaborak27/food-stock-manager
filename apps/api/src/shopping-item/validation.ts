@@ -4,6 +4,7 @@ import { AppError, Errors } from "../common/errors/app-error";
 
 const MAX_NAME_LENGTH = 30;
 const STORAGE_TYPES: readonly StorageType[] = ["REFRIGERATED", "FROZEN", "ROOM_TEMPERATURE"];
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type AddShoppingItemInput = { name: string } | { sourceStockId: string };
 
@@ -58,6 +59,34 @@ export function validateUpdatedAt(value: unknown): Date {
 
 function invalidPurchaseUpdate(): AppError {
   return new AppError("INVALID_PURCHASE_UPDATE", HttpStatus.BAD_REQUEST);
+}
+
+// 一括削除・復元で渡す1件分。idはUUID形式、updatedAtは日時として解釈できる値だけを許す。
+export interface BulkItemRef {
+  id: string;
+  updatedAt: Date;
+}
+
+// 一括削除・復元の入力を確かめる。1件以上、IDの重複なし、各要素のid・updatedAtの型・形式が
+// 正しいことを求める。1つでも崩れていればVALIDATION_ERRORにする
+// （02_API.md 1節「不正なUUID・日時・型、必要項目の欠落…はVALIDATION_ERROR」）。
+export function validateBulkItemsInput(body: Record<string, unknown>): BulkItemRef[] {
+  if (!Array.isArray(body.items) || body.items.length === 0) {
+    throw Errors.validation({ field: "items" });
+  }
+
+  const seenIds = new Set<string>();
+  return body.items.map((raw) => {
+    if (typeof raw !== "object" || raw === null) {
+      throw Errors.validation({ field: "items" });
+    }
+    const { id, updatedAt } = raw as Record<string, unknown>;
+    if (typeof id !== "string" || !UUID_PATTERN.test(id) || seenIds.has(id)) {
+      throw Errors.validation({ field: "items" });
+    }
+    seenIds.add(id);
+    return { id, updatedAt: validateUpdatedAt(updatedAt) };
+  });
 }
 
 // 買い物リストへの追加の入力を確かめる。直接入力(name)と常備食から(sourceStockId)は
