@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-タスク7d-5まで`main`にマージ済み。買い物リストの詳細設計（[購入時の常備食反映](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)・[重複判定と一括操作の整合性](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)）まで完了。7e-1（`ShoppingItem`のスキーマと一覧取得API）は[PR #19](https://github.com/koekoebaborak27/food-stock-manager/pull/19)（`codex/shopping-list-schema-and-list-api`）でマージ待ち。マージ後は次の7e-2（買い物リスト画面の一覧表示）を`main`から分岐して着手する。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
+タスク7d-5まで`main`にマージ済み。買い物リストの詳細設計（[購入時の常備食反映](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)・[重複判定と一括操作の整合性](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)）まで完了。7e-1（`ShoppingItem`のスキーマと一覧取得API）は[PR #19](https://github.com/koekoebaborak27/food-stock-manager/pull/19)（`codex/shopping-list-schema-and-list-api`）、7e-2（買い物リスト画面の一覧表示）は[PR #20](https://github.com/koekoebaborak27/food-stock-manager/pull/20)（`codex/shopping-list-screen`、PR #19の上に積んだスタックPR）でマージ待ち。**マージ順は#19→#20。#19マージ後に`gh pr edit 20 --base main`でbaseを付け替える。** マージ後は次の7e-3（直接入力・常備食からの追加API/画面）へ進む。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -82,7 +82,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-5のPRはすべてマージ済み）。`codex/shopping-list-schema-and-list-api`が[PR #19](https://github.com/koekoebaborak27/food-stock-manager/pull/19)（タスク7e-1）でマージ待ち |
+| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-5のPRはすべてマージ済み）。`codex/shopping-list-schema-and-list-api`が[PR #19](https://github.com/koekoebaborak27/food-stock-manager/pull/19)（7e-1）、`codex/shopping-list-screen`が[PR #20](https://github.com/koekoebaborak27/food-stock-manager/pull/20)（7e-2、PR #19の上のスタックPR）でマージ待ち |
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
 | 本番 | 未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
