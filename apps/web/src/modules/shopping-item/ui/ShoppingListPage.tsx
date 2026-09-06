@@ -328,6 +328,9 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
             <Link href="/household/members" className="rounded-md px-3 py-2 hover:bg-accent">
               メンバーと家族グループ
             </Link>
+            <Link href="/notifications" className="rounded-md px-3 py-2 hover:bg-accent">
+              通知の設定
+            </Link>
             <Link href="/settings" className="rounded-md px-3 py-2 hover:bg-accent">
               アカウントの設定
             </Link>
