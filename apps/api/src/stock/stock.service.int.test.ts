@@ -6,7 +6,12 @@ import {
   createUser,
   cleanDatabase,
 } from "../household/test-fixtures";
+import { ShoppingItemService } from "../shopping-item/shopping-item.service";
 import { StockService } from "./stock.service";
+
+function createStockService(prisma: PrismaService): StockService {
+  return new StockService(prisma, new ShoppingItemService(prisma));
+}
 
 /**
  * 対象: stock/StockService list
@@ -15,7 +20,7 @@ import { StockService } from "./stock.service";
  */
 describe("stock/StockService list", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -130,7 +135,7 @@ const validInput = {
  */
 describe("stock/StockService get", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -187,7 +192,7 @@ describe("stock/StockService get", () => {
 
 describe("stock/StockService create", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -243,7 +248,7 @@ describe("stock/StockService create", () => {
 
 describe("stock/StockService update", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -320,7 +325,7 @@ describe("stock/StockService update", () => {
  */
 describe("stock/StockService get 作成者・更新者", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -372,7 +377,7 @@ describe("stock/StockService get 作成者・更新者", () => {
  */
 describe("stock/StockService adjustQuantity", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -444,11 +449,12 @@ describe("stock/StockService adjustQuantity", () => {
 /**
  * 対象: stock/StockService consume
  * 目的: 消費済にした食品が一覧・消費済リストどちらの問い合わせにも
- *       前提となるconsumedAtを持つことを担保する。
+ *       前提となるconsumedAtを持つこと、addToShoppingListがtrueのときに
+ *       買い物リストへの追加（重複時は省略）と組み合わさることを担保する。
  */
 describe("stock/StockService consume", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -459,15 +465,16 @@ describe("stock/StockService consume", () => {
   });
 
   describe("未消費の食品を指定したとき", () => {
-    it("consumedAtを記録する", async () => {
+    it("consumedAtを記録し、duplicateShoppingItem:falseを返す", async () => {
       const user = await createUser(prisma);
       const household = await createHouseholdWithAdmin(prisma, user.id);
       const stock = await prisma.stock.create({
         data: { householdId: household.id, name: "にんじん" },
       });
 
-      await service.consume(user.id, stock.id);
+      const result = await service.consume(user.id, stock.id, false);
 
+      expect(result).toEqual({ duplicateShoppingItem: false });
       const stored = await prisma.stock.findUniqueOrThrow({ where: { id: stock.id } });
       expect(stored.consumedAt).not.toBeNull();
       expect(stored.updatedById).toBe(user.id);
@@ -482,9 +489,46 @@ describe("stock/StockService consume", () => {
         data: { householdId: household.id, name: "にんじん", consumedAt: new Date() },
       });
 
-      await expect(service.consume(user.id, stock.id)).rejects.toMatchObject({
+      await expect(service.consume(user.id, stock.id, false)).rejects.toMatchObject({
         code: "STOCK_NOT_FOUND",
       });
+    });
+  });
+
+  describe("addToShoppingList:trueを指定したとき", () => {
+    it("食品名を商品名として買い物リストへ追加し、sourceStockIdにこの常備食のidを記録する", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん" },
+      });
+
+      const result = await service.consume(user.id, stock.id, true);
+
+      expect(result).toEqual({ duplicateShoppingItem: false });
+      const item = await prisma.shoppingItem.findFirstOrThrow({
+        where: { householdId: household.id },
+      });
+      expect(item).toMatchObject({ name: "にんじん", sourceStockId: stock.id, isPurchased: false });
+    });
+
+    it("同名の未購入商品がすでにあれば追加を省き、duplicateShoppingItem:trueで消費済への変更は完了する", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん" },
+      });
+      await prisma.shoppingItem.create({
+        data: { householdId: household.id, name: "にんじん" },
+      });
+
+      const result = await service.consume(user.id, stock.id, true);
+
+      expect(result).toEqual({ duplicateShoppingItem: true });
+      const stored = await prisma.stock.findUniqueOrThrow({ where: { id: stock.id } });
+      expect(stored.consumedAt).not.toBeNull();
+      const count = await prisma.shoppingItem.count({ where: { householdId: household.id } });
+      expect(count).toBe(1);
     });
   });
 });
@@ -495,7 +539,7 @@ describe("stock/StockService consume", () => {
  */
 describe("stock/StockService remove", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -546,7 +590,7 @@ describe("stock/StockService remove", () => {
 
 describe("stock/StockService restore", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -593,7 +637,7 @@ describe("stock/StockService restore", () => {
  */
 describe("stock/StockService listConsumed", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -662,7 +706,7 @@ describe("stock/StockService listConsumed", () => {
  */
 describe("stock/StockService reRegister", () => {
   const prisma = new PrismaService();
-  const service = new StockService(prisma);
+  const service = createStockService(prisma);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);

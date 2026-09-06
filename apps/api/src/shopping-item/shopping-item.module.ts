@@ -8,5 +8,6 @@ import { ShoppingItemService } from "./shopping-item.service";
   imports: [AuthModule],
   controllers: [ShoppingItemController],
   providers: [ShoppingItemService],
+  exports: [ShoppingItemService],
 })
 export class ShoppingItemModule {}

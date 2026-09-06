@@ -63,8 +63,8 @@ export function validateQuantityDelta(body: Record<string, unknown>): number {
   throw Errors.validation({ field: "delta" });
 }
 
-// 消費済にするときの入力を確かめる。addToShoppingListは受け取るだけで、
-// 買い物リスト機能が未実装のため呼び出し側では使わない。
+// 消費済にするときの入力を確かめる。addToShoppingListは、消費済にするのと合わせて
+// 買い物リストへ追加するかどうかを表す。
 export function validateConsumeInput(body: Record<string, unknown>): {
   addToShoppingList: boolean;
 } {

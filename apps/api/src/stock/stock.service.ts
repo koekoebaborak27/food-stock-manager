@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from "@nestjs/common";
 import type { Membership, Prisma, StorageType, UnitType } from "@prisma/client";
 import { AppError, Errors } from "../common/errors/app-error";
 import { PrismaService } from "../prisma/prisma.service";
+import { ShoppingItemService } from "../shopping-item/shopping-item.service";
 import type { StockInput, StockListQuery, StockSort } from "./validation";
 
 export interface StockListItem {
@@ -41,7 +42,10 @@ const detailInclude = {
 // 常備食を家族グループごとに取得する。削除済みと消費済みの食品は一覧から常に除く。
 @Injectable()
 export class StockService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly shoppingItems: ShoppingItemService,
+  ) {}
 
   // ログインしている利用者が所属する家族グループの常備食一覧を返す。
   async list(userId: string, query: StockListQuery): Promise<{ items: StockListItem[] }> {
@@ -184,10 +188,37 @@ export class StockService {
     return toDetail(updated);
   }
 
-  // 常備食を消費済にする。買い物リストへの追加は30_買い物リストの実装後に呼び出す
-  // （現時点ではaddToShoppingListの値を使わない）。
-  async consume(userId: string, id: string): Promise<void> {
+  // 常備食を消費済にする。addToShoppingListがtrueなら、消費済にする前に食品名を商品名として
+  // 買い物リストへ追加する。同名の未購入商品がすでにあれば追加を省き、消費済への変更だけ完了する。
+  // それ以外の失敗（追加元の常備食が見つからない等）では、消費済への変更もせず終える
+  // （00_買い物リスト共通.md 2節）。
+  async consume(
+    userId: string,
+    id: string,
+    addToShoppingList: boolean,
+  ): Promise<{ duplicateShoppingItem: boolean }> {
     const membership = await this.getMembership(userId);
+    const stock = await this.prisma.stock.findFirst({
+      where: { id, householdId: membership.householdId, deletedAt: null, consumedAt: null },
+      select: { id: true },
+    });
+    if (!stock) {
+      throw stockNotFound();
+    }
+
+    let duplicateShoppingItem = false;
+    if (addToShoppingList) {
+      try {
+        await this.shoppingItems.addItem(userId, { sourceStockId: stock.id });
+      } catch (error) {
+        if (error instanceof AppError && error.code === "SHOPPING_ITEM_ALREADY_EXISTS") {
+          duplicateShoppingItem = true;
+        } else {
+          throw error;
+        }
+      }
+    }
+
     const result = await this.prisma.stock.updateMany({
       where: { id, householdId: membership.householdId, deletedAt: null, consumedAt: null },
       data: { consumedAt: new Date(), updatedById: userId },
@@ -195,6 +226,7 @@ export class StockService {
     if (result.count === 0) {
       throw stockNotFound();
     }
+    return { duplicateShoppingItem };
   }
 
   // 常備食を取り消す（削除）。編集と同様にupdatedAtで更新の競合を確認する。

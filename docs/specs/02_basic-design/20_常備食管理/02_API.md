@@ -11,7 +11,7 @@
 | 常備食を登録する | POST | `/api/stocks` | 応答に `duplicateName`（同じ食品名がすでにあれば `true`）を含める |
 | 常備食を編集する | PUT | `/api/stocks/{id}` | 本文に画面が読んだ `updatedAt` を含める（[02_API共通.md 8](../00_共通/02_API共通.md#8-更新の競合の伝え方)） |
 | 残数を増減する | PATCH | `/api/stocks/{id}/quantity` | 本文 `{ "delta": 1 }` または `{ "delta": -1 }`。`updatedAt` は不要 |
-| 消費済にする | POST | `/api/stocks/{id}/consume` | 本文 `{ "addToShoppingList": boolean }`。買い物リストへの追加は 30_買い物リスト の処理を呼ぶ |
+| 消費済にする | POST | `/api/stocks/{id}/consume` | 本文 `{ "addToShoppingList": boolean }`。買い物リストへの追加は 30_買い物リスト の処理を呼ぶ。200 で `{ "duplicateShoppingItem": boolean }` を返す（`addToShoppingList` が `true` で同名の未購入商品がすでにあった場合だけ `true`） |
 | 常備食を削除する | DELETE | `/api/stocks/{id}` | 本文に画面が読んだ `updatedAt` を含める |
 | 削除を元に戻す | POST | `/api/stocks/{id}/restore` | 削除から5秒以内かどうかはフロントエンドが判断し、過ぎたら呼ばない |
 | 消費済リストを取る | GET | `/api/stocks/consumed` | 常に `consumedAt` の降順 |

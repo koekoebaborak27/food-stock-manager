@@ -126,17 +126,16 @@ export class StockController {
     return this.stocks.adjustQuantity(req.user.userId, id, delta);
   }
 
-  // 常備食を消費済にする。addToShoppingListは入力チェックのためだけに読み、
-  // 買い物リスト機能が未実装のため使わない。
+  // 常備食を消費済にする。addToShoppingListがtrueなら買い物リストへも追加する。
+  // 同名の未購入商品がすでにあった場合はduplicateShoppingItemをtrueで返す。
   @Post(":id/consume")
-  @HttpCode(HttpStatus.NO_CONTENT)
   async consume(
     @Req() req: Request & { user: SessionUser },
     @Param("id") id: string,
     @Body() body: ConsumeBody,
-  ): Promise<void> {
-    validateConsumeInput(body);
-    return this.stocks.consume(req.user.userId, id);
+  ): Promise<{ duplicateShoppingItem: boolean }> {
+    const { addToShoppingList } = validateConsumeInput(body);
+    return this.stocks.consume(req.user.userId, id, addToShoppingList);
   }
 
   // 常備食を削除する（取り消す）。画面が読んだupdatedAtを本文に含めさせ、競合を確かめる。

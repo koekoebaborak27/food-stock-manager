@@ -30,6 +30,7 @@ import { formatDateOnly, formatDateTime } from "@/shared/format/date";
 import { showErrorToast } from "@/shared/ui/toast";
 import { setPendingDeleteUndo } from "../delete-undo";
 import { messageForCode } from "../error-messages";
+import { setPendingSaveToast } from "../save-toast";
 import { formatQuantity } from "../stock-list-helpers";
 import type { StockDetail, StorageType } from "../types";
 
@@ -80,17 +81,29 @@ export function StockDetailPage({ stock: initialStock }: { stock: StockDetail })
     });
   }
 
-  // 選択肢のどちらを選んでも、買い物リスト機能が未実装のため実際には追加しない
-  // （addToShoppingListは常にfalseで送る）。
-  function handleConsume(): void {
+  // 在庫切れシートの選択を確定する。addToShoppingListがtrueのときは、消費済にする前に
+  // 食品名を商品名として買い物リストへ追加する（00_買い物リスト共通.md 2節）。
+  // 同名の未購入商品がすでにあった場合はduplicateShoppingItemがtrueで返り、
+  // 消費済への変更は完了したうえで重複の文言を帯に出す（10_買い物リスト.md 7節）。
+  function handleConsume(addToShoppingList: boolean): void {
     setConsumeSheetOpen(false);
     startTransition(async () => {
       try {
-        await clientApiFetch(`/api/stocks/${stock.id}/consume`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ addToShoppingList: false }),
-        });
+        const result = await clientApiFetch<{ duplicateShoppingItem: boolean }>(
+          `/api/stocks/${stock.id}/consume`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ addToShoppingList }),
+          },
+        );
+        if (addToShoppingList) {
+          setPendingSaveToast(
+            result.duplicateShoppingItem
+              ? messageForCode("SHOPPING_ITEM_ALREADY_EXISTS")
+              : "買い物リストに追加しました",
+          );
+        }
         router.push("/");
       } catch (error) {
         handleActionError(error);
@@ -271,7 +284,7 @@ export function StockDetailPage({ stock: initialStock }: { stock: StockDetail })
                 variant="ghost"
                 className="justify-start"
                 disabled={isPending}
-                onClick={handleConsume}
+                onClick={() => handleConsume(false)}
               >
                 消費済にする
               </Button>
@@ -280,7 +293,7 @@ export function StockDetailPage({ stock: initialStock }: { stock: StockDetail })
                 variant="ghost"
                 className="justify-start"
                 disabled={isPending}
-                onClick={handleConsume}
+                onClick={() => handleConsume(true)}
               >
                 消費済にして、買い物リストに追加する
               </Button>
