@@ -25,7 +25,7 @@
 | 要件定義 | 5 / 5 |
 | 基本設計 | 6 / 6 |
 | 実装 | 6 / 6 |
-| インフラ構築 | 0 / 2 |
+| インフラ構築 | 1 / 2 |
 
 ## 次にやること
 
@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-タスク7d-5・7e-1・7e-2・7e-3・7e-4・7e-5まで`main`にマージ済み（7e-2は当初のPR #20がスタックPRのbase branch消失で自動クローズされたため、リベースしてPR #21として作り直しマージした。経緯は[履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-スタックprのbase-branchが消えて自動クローズされた不具合)）。買い物リスト機能（7e）が完了。7f-1（期限通知: スキーマと通知時刻API）は[PR #25](https://github.com/koekoebaborak27/food-stock-manager/pull/25)としてmainにマージ済み。7f-2（期限通知: PWAの土台・購読API）は[PR #26](https://github.com/koekoebaborak27/food-stock-manager/pull/26)としてmainにマージ済み。7f-3（期限通知: 通知の設定画面）は[PR #27](https://github.com/koekoebaborak27/food-stock-manager/pull/27)としてmainにマージ済み。7f-4（期限通知: 配信バッチAPI）は[PR #28](https://github.com/koekoebaborak27/food-stock-manager/pull/28)としてmainにマージ済みで、これにより期限通知（7f）・機能実装（7）が完了。次は8（Dockerfile）へ進む。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
+機能実装（タスク7）がすべて完了（直近: 7f-4の[PR #28](https://github.com/koekoebaborak27/food-stock-manager/pull/28)）。タスク8（web/apiのDockerfile）は作業ブランチ`codex/task8-dockerfiles`で作成し、`docker build`/`docker run`での動作確認まで完了（詳細は[履歴](history/2026-09-06_Dockerfileの作成.md)）。このブランチでPRを作成し、マージの指示を待つ。次はタスク9（Cloud Runへのデプロイ）。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -70,7 +70,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
   - [x] 7f-2. 期限通知: PWAの土台(`manifest.json`・Service Worker登録・VAPID鍵)と購読API(`GET /api/push-subscriptions/me`・`POST /api/push-subscriptions`・`DELETE /api/push-subscriptions/me`)（2026-09-06）→ [履歴](history/2026-09-06_期限通知の実装.md#2026-09-06-pwaの土台と購読apiを実装した7f-2)
   - [x] 7f-3. 期限通知: 通知の設定画面(通知トグル・通知時刻選択)（2026-09-06）→ [履歴](history/2026-09-06_期限通知の実装.md#2026-09-06-通知の設定画面を実装した7f-3)
   - [x] 7f-4. 期限通知: 配信バッチAPI(`POST /api/internal/notifications/dispatch`)を実装する（[詳細設計: Web Push配信処理](../specs/03_detail-design/40_期限通知/01_Web_Push配信処理.md)を先に書く）（2026-09-06）→ [履歴](history/2026-09-06_期限通知の実装.md#2026-09-06-配信バッチapiを実装した7f-4)
-- [ ] 8. Dockerfile を web / api の 2 つ書き、ローカルで `docker build` → `docker run` が通ることを確認する。手順が確定するのはタスク 7 の後。
+- [x] **8. Dockerfile を web / api の 2 つ書き、ローカルで `docker build` → `docker run` が通ることを確認する**（2026-09-06）→ [履歴](history/2026-09-06_Dockerfileの作成.md)
 - [ ] 9. Cloud Run へデプロイする。あわせて未決事項（最小インスタンス数を 0 のままとするか）を決める。
 
 ## 残っているタスク
@@ -85,9 +85,9 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-5・7e-1〜7e-5・7f-1・7f-2・7f-3・7f-4のPRはすべてマージ済み。機能実装（タスク7）が完了） |
-| ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
-| 本番 | 未構築 |
+| 作業ブランチ | `codex/task8-dockerfiles`（未マージ。機能実装（タスク7）はすべて`main`マージ済み） |
+| ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` / `pnpm build` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
+| 本番 | 未構築。`apps/web/Dockerfile`・`apps/api/Dockerfile`を作成し、`docker build`→`docker run`でのローカル起動・DB疎通・web→apiのリバースプロキシ疎通まで確認済み（詳細は[履歴](history/2026-09-06_Dockerfileの作成.md)） |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
 | 実装 | タスク7a〜7c・7d-1〜7d-5・7e-1〜7e-5・7f-1〜7f-4すべて`main`マージ済み。機能実装（タスク7）が完了。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`。200で`{duplicateShoppingItem}`を返す）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）・消費済リストの取得（`GET /api/stocks/consumed`）・常備食への再登録（`POST /api/stocks/{id}/re-register`）に加え、買い物リストの一覧取得・追加（`GET/POST /api/shopping-items`）・購入状態変更（`PATCH /api/shopping-items/{id}/purchased`。常備食への反映を含む）・1件削除（`DELETE /api/shopping-items/{id}`）・購入済み一括削除（`DELETE /api/shopping-items/purchased`）・復元（`POST /api/shopping-items/restore`）・期限通知の通知時刻API（`GET/PATCH /api/notification-settings`）・購読API（`GET/POST /api/push-subscriptions`・`DELETE /api/push-subscriptions/me`）・配信バッチ（`POST /api/internal/notifications/dispatch`。Cloud Schedulerからの`X-Internal-Secret`ヘッダーで認証し、通知時刻が一致し当日未配信の世帯を確保して`StockService.countUrgent`で件数を数え、`web-push`で配信。`apps/api/src/notification-dispatch/`）がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock` `ShoppingItem` `PushSubscription` `NotificationSetting`の9テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面、常備食リスト画面（`urgentOnly=true`のURL絞り込みに対応）・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`、在庫切れシートから買い物リストへ追加可能）・消費済リスト画面（`/stocks/consumed`、買い物リストへ追加するボタン付き）・買い物リスト画面（`/shopping-list`、一覧表示・FABからの直接入力追加・購入確認シート付きのチェック操作・削除/一括削除/復元）・PWAの土台（`public/manifest.json` `sw.js` `icons/`）・通知の設定画面（`/notifications`、通知トグルと通知時刻選択を即保存）が動く。常備食リスト/詳細のカートアイコンからの追加は未着手 |

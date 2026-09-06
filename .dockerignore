@@ -1,0 +1,33 @@
+# Dockerイメージへ入れない/入れる必要が無いもの。
+# ビルドコンテキストを小さくし、ホスト側の成果物やOS依存のバイナリを
+# コンテナへ混入させないために使う（Dockerfile側でpnpm install/buildをやり直す）。
+
+.git
+.gitignore
+.github
+.vscode
+.codex
+.claude
+.agents
+.obsidian
+
+node_modules
+**/node_modules
+**/.next
+**/dist
+tsconfig.tsbuildinfo
+
+.env
+.env.local
+.env*.local
+
+docs
+e2e
+README.md
+README_SIMPLE.md
+AGENTS.md
+CLAUDE.md
+DESIGN.md
+REVIEW.md
+TESTING.md
+LICENSE
