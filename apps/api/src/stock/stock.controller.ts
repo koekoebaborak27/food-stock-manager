@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -15,7 +17,13 @@ import type { Request } from "express";
 import { SessionGuard } from "../auth/session.guard";
 import type { SessionUser } from "../auth/session.service";
 import { StockService, type StockDetail, type StockListItem } from "./stock.service";
-import { validateStockInput, validateStockListQuery, validateUpdatedAt } from "./validation";
+import {
+  validateConsumeInput,
+  validateQuantityDelta,
+  validateStockInput,
+  validateStockListQuery,
+  validateUpdatedAt,
+} from "./validation";
 
 interface StockBody {
   [key: string]: unknown;
@@ -30,6 +38,20 @@ interface StockBody {
 
 interface UpdateStockBody extends StockBody {
   updatedAt?: unknown;
+}
+
+interface DeleteStockBody {
+  updatedAt?: unknown;
+}
+
+interface QuantityBody {
+  [key: string]: unknown;
+  delta?: unknown;
+}
+
+interface ConsumeBody {
+  [key: string]: unknown;
+  addToShoppingList?: unknown;
 }
 
 // 常備食の読み書きの経路。利用者の家族グループはセッションから決める。
@@ -77,5 +99,51 @@ export class StockController {
     const input = validateStockInput(body);
     const updatedAt = validateUpdatedAt(body.updatedAt);
     return this.stocks.update(req.user.userId, id, input, updatedAt);
+  }
+
+  // 残数を1増減する。更新の競合は確認しない。
+  @Patch(":id/quantity")
+  async adjustQuantity(
+    @Req() req: Request & { user: SessionUser },
+    @Param("id") id: string,
+    @Body() body: QuantityBody,
+  ): Promise<StockDetail> {
+    const delta = validateQuantityDelta(body);
+    return this.stocks.adjustQuantity(req.user.userId, id, delta);
+  }
+
+  // 常備食を消費済にする。addToShoppingListは入力チェックのためだけに読み、
+  // 買い物リスト機能が未実装のため使わない。
+  @Post(":id/consume")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async consume(
+    @Req() req: Request & { user: SessionUser },
+    @Param("id") id: string,
+    @Body() body: ConsumeBody,
+  ): Promise<void> {
+    validateConsumeInput(body);
+    return this.stocks.consume(req.user.userId, id);
+  }
+
+  // 常備食を削除する（取り消す）。画面が読んだupdatedAtを本文に含めさせ、競合を確かめる。
+  @Delete(":id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Req() req: Request & { user: SessionUser },
+    @Param("id") id: string,
+    @Body() body: DeleteStockBody,
+  ): Promise<void> {
+    const updatedAt = validateUpdatedAt(body.updatedAt);
+    return this.stocks.remove(req.user.userId, id, updatedAt);
+  }
+
+  // 削除を元に戻す。5秒以内かどうかはフロントエンドが判断する。
+  @Post(":id/restore")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async restore(
+    @Req() req: Request & { user: SessionUser },
+    @Param("id") id: string,
+  ): Promise<void> {
+    return this.stocks.restore(req.user.userId, id);
   }
 }

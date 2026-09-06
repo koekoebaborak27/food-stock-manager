@@ -22,10 +22,13 @@ export interface StockListResponse {
   items: StockListItem[];
 }
 
-// GET /api/stocks/{id}・POST /api/stocks・PUT /api/stocks/{id} が扱う1件分。
-// 一覧の項目にメモを足したもの。
+// GET /api/stocks/{id}・POST /api/stocks・PUT /api/stocks/{id}・
+// PATCH /api/stocks/{id}/quantity が扱う1件分。一覧の項目にメモと作成者・更新者名を足したもの。
+// 退会したメンバーはnullになる（00_画面共通.md 5節）。
 export interface StockDetail extends StockListItem {
   memo: string | null;
+  createdByName: string | null;
+  updatedByName: string | null;
 }
 
 // POST /api/stocks・PUT /api/stocks/{id} に送る登録・編集フォームの入力値。

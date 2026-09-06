@@ -53,6 +53,28 @@ export function validateUpdatedAt(value: unknown): Date {
   throw Errors.validation({ fields: ["updatedAt"] });
 }
 
+// 残数の増減で読んだdeltaを確かめる。「+」「−」ボタンは1ずつ増減するため、
+// 1か-1以外は受け付けない（00_常備食管理共通.md 4節）。
+export function validateQuantityDelta(body: Record<string, unknown>): number {
+  const value = body.delta;
+  if (value === 1 || value === -1) {
+    return value;
+  }
+  throw Errors.validation({ field: "delta" });
+}
+
+// 消費済にするときの入力を確かめる。addToShoppingListは受け取るだけで、
+// 買い物リスト機能が未実装のため呼び出し側では使わない。
+export function validateConsumeInput(body: Record<string, unknown>): {
+  addToShoppingList: boolean;
+} {
+  const value = body.addToShoppingList;
+  if (typeof value === "boolean") {
+    return { addToShoppingList: value };
+  }
+  throw Errors.validation({ field: "addToShoppingList" });
+}
+
 function validateStockName(value: unknown, failed: string[]): string {
   const trimmed = typeof value === "string" ? value.trim() : "";
   if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {
