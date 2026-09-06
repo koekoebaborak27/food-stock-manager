@@ -7,8 +7,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // マイグレーション専用の接続先。Supabase本番ではプーラー越しにDDLを実行できないため、
+  // マイグレーションだけ直接接続（セッションプーラー）に向ける。ローカルはDATABASE_URLと同じ値でよい。
+  directUrl = env("DIRECT_URL")
 }
 
 // 家族グループの中での役割。世帯につきADMINは1人だけ。

@@ -27,4 +27,4 @@ gcloud scheduler jobs create http notification-dispatch \
    ```
 
 2. Cloud Run（api）のログで `notification-dispatch` からのリクエストが200で返っていることを確認する（`gcloud run services logs read api --region=asia-northeast1`）。
-3. [04_Cloud_Run 4節](infra_design_04_Cloud_Run.md#4-動作確認)で登録した Web Push 購読に、期限が近い常備食を1件登録した状態で通知が届くか確認する（設定した通知時刻の15分枠に実行が重なるまで待つか、通知時刻を直近に変更して試す）。
+3. [04_Cloud_Run 5節](infra_design_04_Cloud_Run.md#5-動作確認)で登録した Web Push 購読に、期限が近い常備食を1件登録した状態で通知が届くか確認する（設定した通知時刻の15分枠に実行が重なるまで待つか、通知時刻を直近に変更して試す）。

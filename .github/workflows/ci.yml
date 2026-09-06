@@ -36,6 +36,8 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://app:password@localhost:5432/app_db
+      # schema.prismaのdirectUrlが参照するため必須。ローカル同様プーラーを挟まないので同じ値でよい。
+      DIRECT_URL: postgresql://app:password@localhost:5432/app_db
 
     steps:
       - uses: actions/checkout@v7

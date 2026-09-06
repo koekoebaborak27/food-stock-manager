@@ -2,7 +2,19 @@
 
 [00_概要と全体構成](infra_design_00_概要と全体構成.md)の4番目の手順。**api → web の順でしかデプロイできない**（web のビルドが api の URL に依存するため。[02_Artifact_Registry](infra_design_02_Artifact_Registry.md)参照）。
 
-## 1. api のデプロイ
+## 1. 本番データベースへのマイグレーション適用
+
+api を初めてデプロイする前に、Supabase側のデータベースへスキーマを反映する。適用コマンドは実行環境（コンテナ）の中からではなく、**ローカルから手動で行う**（[`docs/prisma_operations.md` 3-1節](../../prisma_operations.md#3-1-適用方法)の方針どおり）。
+
+```bash
+DATABASE_URL="<Secret Managerのdatabase-urlと同じ値>" \
+DIRECT_URL="<Secret Managerのdirect-urlと同じ値>" \
+pnpm exec prisma migrate deploy
+```
+
+以降、スキーマを変更するたびにこのコマンドを実行してから api をデプロイし直す。
+
+## 2. api のデプロイ
 
 ```bash
 gcloud run deploy api \
@@ -19,6 +31,7 @@ gcloud run deploy api \
 - `--min-instances=0` — [未決事項の決定](infra_design_00_概要と全体構成.md#4-未決事項の決定)のとおり0のまま。
 - `--max-instances=2` — 家庭内利用の想定台数を超える負荷が来ないための上限。値は運用しながら調整する。
 - **この時点では `google-callback-url` と `web-base-url` シークレットはまだ web の本番 URL で作られていない**（4節で確定させてから登録し直す）。初回デプロイでは仮に `http://localhost:3000` 相当の値を入れておき、4節のあとに更新・再デプロイする。
+- `DATABASE_URL` には Secret Manager の `database-url`（トランザクションプーラー）を使う。`DIRECT_URL` は1節でローカルから手動実行するときだけ使うため、Cloud Run には渡さない。
 
 デプロイ後、次のコマンドで URL を確認する。
 
@@ -26,9 +39,9 @@ gcloud run deploy api \
 gcloud run services describe api --region=asia-northeast1 --format="value(status.url)"
 ```
 
-## 2. web のビルドし直しとデプロイ
+## 3. web のビルドし直しとデプロイ
 
-1で確認した URL を使って web イメージを作り直す（[02_Artifact_Registry 3節](infra_design_02_Artifact_Registry.md#3-イメージのビルドと-push)）。
+2で確認した URL を使って web イメージを作り直す（[02_Artifact_Registry 3節](infra_design_02_Artifact_Registry.md#3-イメージのビルドと-push)）。
 
 ```bash
 gcloud run deploy web \
@@ -48,13 +61,13 @@ web は `.env.example` の値をビルド時に焼き込む構成（[Dockerfile]
 gcloud run services describe web --region=asia-northeast1 --format="value(status.url)"
 ```
 
-## 3. Google OAuth リダイレクト URI の確定
+## 4. Google OAuth リダイレクト URI の確定
 
 1. [01_事前準備 5節](infra_design_01_事前準備.md#5-google-oauth-クライアントの作成)で後回しにした「承認済みのリダイレクト URI」に `https://<webサービスURL>/api/auth/google/callback` を追加する。
 2. `google-callback-url` シークレットを同じ値で更新し、`web-base-url` シークレットも `https://<webサービスURL>` で更新する（[03_Secret_Manager 2節](infra_design_03_Secret_Manager.md#2-シークレットの作成)の更新コマンド）。
 3. api を再デプロイして新しいシークレットの値を反映する（イメージは変えず、`gcloud run services update api --region=asia-northeast1` で再デプロイしてもよい）。
 
-## 4. 動作確認
+## 5. 動作確認
 
 1. `https://<webサービスURL>` をブラウザで開き、Google ログインが完了して常備食リスト画面まで進むことを確認する。
 2. 常備食の登録・買い物リストへの追加など、DB 更新を伴う操作を1つ行い、Supabase の Table Editor でデータが入ることを確認する。

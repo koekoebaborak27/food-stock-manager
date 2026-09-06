@@ -10,7 +10,7 @@ Prisma スキーマ変更〜DB 反映の**運用手順の正本**。スキーマ
 |---|---|---|
 | ローカル開発 | `pnpm prisma:migrate`（= `prisma migrate dev`）/ `pnpm db:reset` / `pnpm prisma:seed` | `prisma db push`（migrations と乖離するため恒久禁止） |
 | CI（GitHub Actions） | `prisma validate` / `prisma migrate deploy`（使い捨て PostgreSQL に対して） | — |
-| 本番 | **`prisma migrate deploy` のみ**（ローカルから本番 DATABASE_URL に対して手動実行） | `migrate dev` / `migrate reset` / `db push` / 手動 DDL |
+| 本番 | **`prisma migrate deploy` のみ**（ローカルから本番の `DATABASE_URL` / `DIRECT_URL` に対して手動実行） | `migrate dev` / `migrate reset` / `db push` / 手動 DDL |
 
 > 原則: **DB スキーマを変える手段は migration ファイルだけ**。どの環境でも psql 等で直接 DDL を流さない（drift の原因）。
 
@@ -156,14 +156,15 @@ PR / push で [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) が以�
 
 ### 3-1. 適用方法
 
-適用コマンドは **`prisma migrate deploy` のみ**。デプロイ前フックを持たない実行環境（コンテナ系のマネージドサービス等）では、**ローカルから本番の DATABASE_URL に対して手動実行**する。
+適用コマンドは **`prisma migrate deploy` のみ**。デプロイ前フックを持たない実行環境（コンテナ系のマネージドサービス等）では、**ローカルから本番の `DATABASE_URL` / `DIRECT_URL` に対して手動実行**する。
 
 ```powershell
-$env:DATABASE_URL="<本番 DB の接続文字列>"
+$env:DATABASE_URL="<本番 DB の接続プーラー経由の接続文字列>"
+$env:DIRECT_URL="<本番 DB のマイグレーション用（セッションプーラー等）接続文字列>"
 pnpm exec prisma migrate deploy
 ```
 
-- 接続プーラーを挟む構成では、プリペアドステートメントに対応した接続方式を選ぶ（対応していない経路だと `migrate deploy` が通らないことがある）。
+- `migrate deploy` は `schema.prisma` の `directUrl`（= `DIRECT_URL`）へ接続する。トランザクションプーラー（`DATABASE_URL`）はプリペアドステートメントに対応せず DDL の実行に使えないため、マイグレーションだけ別の接続先に分けている（[`docs/specs/99_infra/infra_design_01_事前準備.md`](specs/99_infra/infra_design_01_事前準備.md)参照）。`DATABASE_URL` も schema.prisma が参照するため、値が無いとコマンド自体が失敗する。
 - `migrate deploy` は未適用のマイグレーションを**順番に適用するだけ**。生成・drift 検知・reset は行わない（本番に安全）。
 - 適用後、疎通確認用のエンドポイントやコマンドで接続を確認する。
 - 自動化する場合は、デプロイ後に走らせるジョブやパイプラインのステップとして実行する。
@@ -182,13 +183,13 @@ pnpm exec prisma migrate deploy
 
 ### 3-3. 本番でやってはいけないこと
 
-- `prisma migrate dev`（= `pnpm prisma:migrate`）/ `prisma migrate reset`（= `pnpm db:reset`）/ `prisma db push` を本番の DATABASE_URL に対して実行する（reset は**全データ削除**）。
+- `prisma migrate dev`（= `pnpm prisma:migrate`）/ `prisma migrate reset`（= `pnpm db:reset`）/ `prisma db push` を本番の `DATABASE_URL` / `DIRECT_URL` に対して実行する（reset は**全データ削除**）。
 - seed の再実行（初回構築時のみ）。
 - `_prisma_migrations` テーブルの手動書き換え（失敗時の解消は §3-4 の手順で）。
 
 ### 3-4. 失敗時・ロールバック
 
-- **migrate deploy が途中失敗した場合**: PostgreSQL では各 migration がトランザクション適用されるため、失敗した migration は未適用扱いで残る。実行したターミナルの出力で原因を確認し、**修正は新しいマイグレーションを追加する forward fix を基本**とする。失敗状態が `_prisma_migrations` に残って再適用がブロックされる場合のみ `prisma migrate resolve --rolled-back <name>` をローカルから本番 DATABASE_URL に対して一時的に実行してから再 deploy する。
+- **migrate deploy が途中失敗した場合**: PostgreSQL では各 migration がトランザクション適用されるため、失敗した migration は未適用扱いで残る。実行したターミナルの出力で原因を確認し、**修正は新しいマイグレーションを追加する forward fix を基本**とする。失敗状態が `_prisma_migrations` に残って再適用がブロックされる場合のみ `prisma migrate resolve --rolled-back <name>` をローカルから本番の `DATABASE_URL` / `DIRECT_URL` に対して一時的に実行してから再 deploy する。
 - **アプリのロールバック**: 実行環境のリビジョン管理から直前の正常リビジョンへ戻す。後方互換マイグレーション（§3-2）を守っていれば、スキーマはそのままでコードだけ戻せる。
 - **スキーマ自体を戻す必要がある場合**: down マイグレーションは作っていないため、逆操作の新規マイグレーションを書く（forward fix）。それも不可能なデータ破壊時は、DB サービスのバックアップ（Point-in-time Recovery 等）からの復元が最終手段。
 

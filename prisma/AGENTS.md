@@ -13,7 +13,7 @@
 運用フローの正本は `@docs/prisma_operations.md`。エージェントが守る最小規則:
 
 - **DB スキーマを変える手段は migration ファイルのみ**。`prisma db push` と psql 等での直接 DDL はどの環境でも禁止。
-- 開発: `pnpm prisma:migrate -- --name <英語snake_case>`（`--name` 必須。対話プロンプトで止まるため）。本番: `prisma migrate deploy` のみ（ローカルから本番 DATABASE_URL に対して手動実行）。
+- 開発: `pnpm prisma:migrate -- --name <英語snake_case>`（`--name` 必須。対話プロンプトで止まるため）。本番: `prisma migrate deploy` のみ（ローカルから本番の `DATABASE_URL` / `DIRECT_URL` に対して手動実行。理由は[`docs/prisma_operations.md` 3-1節](../docs/prisma_operations.md#3-1-適用方法)）。
 - **適用済みマイグレーション（main マージ済み・本番適用済み）の編集・削除は禁止**。修正は新しいマイグレーションの追加（forward fix）で行う。
 - **schema.prisma 編集 → 自動生成が原則**。schema.prisma で表現できない DDL（DB 関数・トリガー・ビュー・部分インデックス・CHECK 制約・データ移行 UPDATE）のみ `--create-only` で雛形を生成して SQL を手書きする（判断表は `docs/prisma_operations.md` §1-1）。schema.prisma 管理対象（テーブル・カラム・通常インデックス）を手書き SQL で変えるのは禁止（drift になる）。
 - 生成された `migration.sql` は**コミット前に目視レビュー**する（データ損失を伴う DDL や、ライブラリが自前で作るスキーマの混入がないこと）。
