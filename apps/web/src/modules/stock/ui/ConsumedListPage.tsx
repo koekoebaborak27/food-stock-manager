@@ -122,7 +122,9 @@ export function ConsumedListPage({ householdName }: { householdName: string }) {
         <Link href="/" className="text-muted-foreground">
           常備食
         </Link>
-        <span className="text-muted-foreground">買い物</span>
+        <Link href="/shopping-list" className="text-muted-foreground">
+          買い物
+        </Link>
         <span className="font-bold text-primary">消費済</span>
       </nav>
     </main>
