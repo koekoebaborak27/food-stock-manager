@@ -18,7 +18,16 @@ export interface StockListItem {
 
 export interface StockDetail extends StockListItem {
   memo: string | null;
+  createdByName: string | null;
+  updatedByName: string | null;
 }
+
+// 作成者・更新者の表示名を一緒に取得するためのinclude句。退会した利用者はcreatedById等が
+// 空になるため、その場合はtoDetailでnullへ変換し「退会したメンバー」表示に委ねる。
+const detailInclude = {
+  createdBy: { select: { displayName: true } },
+  updatedBy: { select: { displayName: true } },
+} satisfies Prisma.StockInclude;
 
 // 常備食を家族グループごとに取得する。削除済みと消費済みの食品は一覧から常に除く。
 @Injectable()
@@ -41,11 +50,12 @@ export class StockService {
     return { items: stocks.map(toListItem) };
   }
 
-  // 常備食1件を、編集画面が読む形で返す。他の家族グループのものは404にする。
+  // 常備食1件を、編集・詳細画面が読む形で返す。他の家族グループのものは404にする。
   async get(userId: string, id: string): Promise<StockDetail> {
     const membership = await this.getMembership(userId);
     const stock = await this.prisma.stock.findFirst({
       where: { id, householdId: membership.householdId, deletedAt: null },
+      include: detailInclude,
     });
     if (!stock) {
       throw stockNotFound();
@@ -81,6 +91,7 @@ export class StockService {
         createdById: userId,
         updatedById: userId,
       },
+      include: detailInclude,
     });
     return { ...toDetail(created), duplicateName: duplicate !== null };
   }
@@ -117,8 +128,94 @@ export class StockService {
       throw new AppError("STOCK_UPDATE_CONFLICT", HttpStatus.CONFLICT);
     }
 
-    const updated = await this.prisma.stock.findUniqueOrThrow({ where: { id } });
+    const updated = await this.prisma.stock.findUniqueOrThrow({
+      where: { id },
+      include: detailInclude,
+    });
     return toDetail(updated);
+  }
+
+  // 残数を1増減する。更新の競合は確認せず、データベース側で差分を足し引きする
+  // （00_常備食管理共通.md 4節）。0未満にはしない。
+  async adjustQuantity(userId: string, id: string, delta: number): Promise<StockDetail> {
+    const membership = await this.getMembership(userId);
+    const where: Prisma.StockWhereInput = {
+      id,
+      householdId: membership.householdId,
+      deletedAt: null,
+    };
+
+    if (delta > 0) {
+      const result = await this.prisma.stock.updateMany({
+        where,
+        data: { quantity: { increment: delta }, updatedById: userId },
+      });
+      if (result.count === 0) {
+        throw stockNotFound();
+      }
+    } else {
+      // すでに0のときはquantity: {gt: 0}に一致せず更新されない。それ自体は成功として扱い、
+      // 対象が存在しない場合とだけ区別する。
+      const result = await this.prisma.stock.updateMany({
+        where: { ...where, quantity: { gt: 0 } },
+        data: { quantity: { increment: delta }, updatedById: userId },
+      });
+      if (result.count === 0) {
+        const existing = await this.prisma.stock.findFirst({ where });
+        if (!existing) {
+          throw stockNotFound();
+        }
+      }
+    }
+
+    const updated = await this.prisma.stock.findFirst({ where, include: detailInclude });
+    if (!updated) {
+      throw stockNotFound();
+    }
+    return toDetail(updated);
+  }
+
+  // 常備食を消費済にする。買い物リストへの追加は30_買い物リストの実装後に呼び出す
+  // （現時点ではaddToShoppingListの値を使わない）。
+  async consume(userId: string, id: string): Promise<void> {
+    const membership = await this.getMembership(userId);
+    const result = await this.prisma.stock.updateMany({
+      where: { id, householdId: membership.householdId, deletedAt: null, consumedAt: null },
+      data: { consumedAt: new Date(), updatedById: userId },
+    });
+    if (result.count === 0) {
+      throw stockNotFound();
+    }
+  }
+
+  // 常備食を取り消す（削除）。編集と同様にupdatedAtで更新の競合を確認する。
+  async remove(userId: string, id: string, updatedAt: Date): Promise<void> {
+    const membership = await this.getMembership(userId);
+    const result = await this.prisma.stock.updateMany({
+      where: { id, householdId: membership.householdId, deletedAt: null, updatedAt },
+      data: { deletedAt: new Date(), updatedById: userId },
+    });
+    if (result.count === 0) {
+      const existing = await this.prisma.stock.findFirst({
+        where: { id, householdId: membership.householdId, deletedAt: null },
+      });
+      if (!existing) {
+        throw stockNotFound();
+      }
+      throw new AppError("STOCK_UPDATE_CONFLICT", HttpStatus.CONFLICT);
+    }
+  }
+
+  // 削除を元に戻す。5秒以内かどうかはフロントエンドが判断し、過ぎたら呼ばない。
+  async restore(userId: string, id: string): Promise<void> {
+    const membership = await this.getMembership(userId);
+    const result = await this.prisma.stock.updateMany({
+      where: { id, householdId: membership.householdId, deletedAt: { not: null } },
+      data: { deletedAt: null, updatedById: userId },
+    });
+    if (result.count === 0) {
+      throw stockNotFound();
+    }
   }
 
   // ログインしている利用者が所属する家族グループを引く。未所属ならNO_HOUSEHOLDにする。
@@ -188,6 +285,8 @@ interface StockRow {
   memo: string | null;
   createdAt: Date;
   updatedAt: Date;
+  createdBy?: { displayName: string | null } | null;
+  updatedBy?: { displayName: string | null } | null;
 }
 
 // 一覧画面に必要な項目だけをAPI応答へ変換する。householdIdなど内部の列は含めない。
@@ -205,7 +304,14 @@ function toListItem(stock: StockRow): StockListItem {
   };
 }
 
-// 登録・編集画面に必要なメモも含めてAPI応答へ変換する。
+// 登録・編集・詳細画面に必要なメモ・作成者・更新者も含めてAPI応答へ変換する。
+// 退会した利用者はcreatedBy/updatedByがnullになるため、そのまま画面側の
+// 「退会したメンバー」表示に委ねる（00_画面共通.md 5節）。
 function toDetail(stock: StockRow): StockDetail {
-  return { ...toListItem(stock), memo: stock.memo };
+  return {
+    ...toListItem(stock),
+    memo: stock.memo,
+    createdByName: stock.createdBy?.displayName ?? null,
+    updatedByName: stock.updatedBy?.displayName ?? null,
+  };
 }

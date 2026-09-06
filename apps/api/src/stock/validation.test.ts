@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { validateStockInput, validateStockListQuery, validateUpdatedAt } from "./validation";
+import {
+  validateConsumeInput,
+  validateQuantityDelta,
+  validateStockInput,
+  validateStockListQuery,
+  validateUpdatedAt,
+} from "./validation";
 
 /**
  * 対象: stock/validation validateStockListQuery
@@ -167,6 +173,51 @@ describe("stock/validation validateUpdatedAt", () => {
   describe("未指定のとき", () => {
     it("AppError(VALIDATION_ERROR) を投げる", () => {
       expect(() => validateUpdatedAt(undefined)).toThrow("VALIDATION_ERROR");
+    });
+  });
+});
+
+/**
+ * 対象: stock/validation validateQuantityDelta
+ * 目的: 残数の増減は「+」「−」ボタンによる1ずつの差分だけを受け付ける。
+ */
+describe("stock/validation validateQuantityDelta", () => {
+  describe("1または-1のとき", () => {
+    it("そのまま返す", () => {
+      expect(validateQuantityDelta({ delta: 1 })).toBe(1);
+      expect(validateQuantityDelta({ delta: -1 })).toBe(-1);
+    });
+  });
+
+  describe("1・-1以外のとき", () => {
+    it("AppError(VALIDATION_ERROR) を投げる", () => {
+      expect(() => validateQuantityDelta({ delta: 2 })).toThrow("VALIDATION_ERROR");
+      expect(() => validateQuantityDelta({ delta: "1" })).toThrow("VALIDATION_ERROR");
+      expect(() => validateQuantityDelta({})).toThrow("VALIDATION_ERROR");
+    });
+  });
+});
+
+/**
+ * 対象: stock/validation validateConsumeInput
+ * 目的: 消費済にするときのaddToShoppingListが真偽値であることだけを確かめる。
+ */
+describe("stock/validation validateConsumeInput", () => {
+  describe("真偽値を指定したとき", () => {
+    it("そのまま返す", () => {
+      expect(validateConsumeInput({ addToShoppingList: true })).toEqual({
+        addToShoppingList: true,
+      });
+      expect(validateConsumeInput({ addToShoppingList: false })).toEqual({
+        addToShoppingList: false,
+      });
+    });
+  });
+
+  describe("真偽値以外のとき", () => {
+    it("AppError(VALIDATION_ERROR) を投げる", () => {
+      expect(() => validateConsumeInput({ addToShoppingList: "true" })).toThrow("VALIDATION_ERROR");
+      expect(() => validateConsumeInput({})).toThrow("VALIDATION_ERROR");
     });
   });
 });

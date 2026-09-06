@@ -16,3 +16,11 @@ export function formatDateTime(iso: string): string {
     parts.find((part) => part.type === type)?.value ?? "";
   return `${get("year")}年${get("month")}月${get("day")}日 ${get("hour")}:${get("minute")}`;
 }
+
+// 期限（YYYY-MM-DDの日付だけの文字列）を「YYYY年M月D日」形式にする
+// （docs/specs/02_basic-design/00_共通/00_画面共通.md 4節「詳細・確認文」）。
+// 日付だけの値のため時刻・タイムゾーンの変換はしない。
+export function formatDateOnly(dateOnly: string): string {
+  const [year, month, day] = dateOnly.split("-");
+  return `${year}年${Number(month)}月${Number(day)}日`;
+}

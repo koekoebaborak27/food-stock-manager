@@ -15,8 +15,11 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ApiError } from "@/shared/api/api-error";
 import { clientApiFetch } from "@/shared/api/client-fetch";
-import { showSuccessToast } from "@/shared/ui/toast";
+import { showErrorToast, showSuccessToast, showUndoToast } from "@/shared/ui/toast";
+import { consumePendingDeleteUndo } from "../delete-undo";
+import { messageForCode } from "../error-messages";
 import { consumePendingSaveToast } from "../save-toast";
 import {
   buildStockListQuery,
@@ -64,6 +67,28 @@ export function StockListPage({ householdName }: { householdName: string }) {
       showSuccessToast(message);
     }
   }, []);
+
+  // 詳細画面からの削除直後だけ、この画面で「元に戻す」付きの帯を出す。
+  // 5秒を過ぎていた場合はconsumePendingDeleteUndoがnullを返すため出さない。
+  useEffect(() => {
+    const pending = consumePendingDeleteUndo();
+    if (!pending) {
+      return;
+    }
+    showUndoToast(pending.message, () => {
+      void restoreStock(pending.id);
+    });
+  }, []);
+
+  // 削除を元に戻し、一覧を読み直す。
+  async function restoreStock(id: string): Promise<void> {
+    try {
+      await clientApiFetch(`/api/stocks/${id}/restore`, { method: "POST" });
+      await loadStocks();
+    } catch (error) {
+      showErrorToast(messageForCode(error instanceof ApiError ? error.code : "SERVER_ERROR"));
+    }
+  }
 
   // APIの成功・失敗を一覧の表示状態へ反映する。
   async function loadStocks(): Promise<void> {
@@ -259,10 +284,11 @@ export function StockListPage({ householdName }: { householdName: string }) {
 }
 
 // 食品1件をカードで表示する。期限・保存区分・作り置きは文字とアイコンの両方で示す。
+// カードを押すと詳細画面へ進む（10_常備食リスト.md 6節）。
 function StockCard({ item }: { item: StockListItem }) {
   const expiry = item.expiresOn ? getExpiryLabel(item.expiresOn) : null;
   return (
-    <article className="rounded-lg border bg-card p-4">
+    <Link href={`/stocks/${item.id}`} className="block rounded-lg border bg-card p-4">
       <h2 className="text-lg font-bold">{item.name}</h2>
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
         <StorageTag storageType={item.storageType} />
@@ -277,7 +303,7 @@ function StockCard({ item }: { item: StockListItem }) {
           </span>
         ) : null}
       </div>
-    </article>
+    </Link>
   );
 }
 

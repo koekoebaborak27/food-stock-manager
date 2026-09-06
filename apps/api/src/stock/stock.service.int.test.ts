@@ -1,6 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaService } from "../prisma/prisma.service";
-import { createHouseholdWithAdmin, createUser, cleanDatabase } from "../household/test-fixtures";
+import {
+  addMember,
+  createHouseholdWithAdmin,
+  createUser,
+  cleanDatabase,
+} from "../household/test-fixtures";
 import { StockService } from "./stock.service";
 
 /**
@@ -300,6 +305,273 @@ describe("stock/StockService update", () => {
       await expect(
         service.update(user.id, otherStock.id, validInput, otherStock.updatedAt),
       ).rejects.toMatchObject({ code: "STOCK_NOT_FOUND" });
+    });
+  });
+});
+
+/**
+ * 対象: stock/StockService get
+ * 目的: 詳細画面が表示する作成者・更新者名を作成・編集の履歴どおりに返すことを担保する。
+ */
+describe("stock/StockService get 作成者・更新者", () => {
+  const prisma = new PrismaService();
+  const service = new StockService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("作成者と更新者が異なるとき", () => {
+    it("それぞれの表示名を返す", async () => {
+      const creator = await createUser(prisma, { displayName: "作成者" });
+      const household = await createHouseholdWithAdmin(prisma, creator.id);
+      const updater = await createUser(prisma, { displayName: "更新者" });
+      await addMember(prisma, updater.id, household.id);
+      const stock = await prisma.stock.create({
+        data: {
+          householdId: household.id,
+          name: "にんじん",
+          createdById: creator.id,
+          updatedById: updater.id,
+        },
+      });
+
+      const result = await service.get(creator.id, stock.id);
+
+      expect(result).toMatchObject({ createdByName: "作成者", updatedByName: "更新者" });
+    });
+  });
+
+  describe("作成者が退会しているとき", () => {
+    it("createdByNameをnullで返す", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん", createdById: null },
+      });
+
+      const result = await service.get(user.id, stock.id);
+
+      expect(result.createdByName).toBeNull();
+    });
+  });
+});
+
+/**
+ * 対象: stock/StockService adjustQuantity
+ * 目的: 残数の増減が0未満にならないこと、更新の競合を確認しないことをDBで担保する。
+ */
+describe("stock/StockService adjustQuantity", () => {
+  const prisma = new PrismaService();
+  const service = new StockService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("残数が1以上のとき", () => {
+    it("-1で残数を1減らし、更新者を記録する", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん", quantity: 2 },
+      });
+
+      const result = await service.adjustQuantity(user.id, stock.id, -1);
+
+      expect(result.quantity).toBe(1);
+      const stored = await prisma.stock.findUniqueOrThrow({ where: { id: stock.id } });
+      expect(stored.updatedById).toBe(user.id);
+    });
+
+    it("+1で残数を1増やす", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん", quantity: 2 },
+      });
+
+      const result = await service.adjustQuantity(user.id, stock.id, 1);
+
+      expect(result.quantity).toBe(3);
+    });
+  });
+
+  describe("残数がすでに0のとき", () => {
+    it("-1を指定しても0未満にならない", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん", quantity: 0 },
+      });
+
+      const result = await service.adjustQuantity(user.id, stock.id, -1);
+
+      expect(result.quantity).toBe(0);
+    });
+  });
+
+  describe("他の家族グループの食品を指定したとき", () => {
+    it("AppError(STOCK_NOT_FOUND) を投げる", async () => {
+      const user = await createUser(prisma);
+      await createHouseholdWithAdmin(prisma, user.id);
+      const otherUser = await createUser(prisma);
+      const otherHousehold = await createHouseholdWithAdmin(prisma, otherUser.id);
+      const otherStock = await prisma.stock.create({
+        data: { householdId: otherHousehold.id, name: "他の食品" },
+      });
+
+      await expect(service.adjustQuantity(user.id, otherStock.id, 1)).rejects.toMatchObject({
+        code: "STOCK_NOT_FOUND",
+      });
+    });
+  });
+});
+
+/**
+ * 対象: stock/StockService consume
+ * 目的: 消費済にした食品が一覧・消費済リストどちらの問い合わせにも
+ *       前提となるconsumedAtを持つことを担保する。
+ */
+describe("stock/StockService consume", () => {
+  const prisma = new PrismaService();
+  const service = new StockService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("未消費の食品を指定したとき", () => {
+    it("consumedAtを記録する", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん" },
+      });
+
+      await service.consume(user.id, stock.id);
+
+      const stored = await prisma.stock.findUniqueOrThrow({ where: { id: stock.id } });
+      expect(stored.consumedAt).not.toBeNull();
+      expect(stored.updatedById).toBe(user.id);
+    });
+  });
+
+  describe("すでに消費済みの食品を指定したとき", () => {
+    it("AppError(STOCK_NOT_FOUND) を投げる", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん", consumedAt: new Date() },
+      });
+
+      await expect(service.consume(user.id, stock.id)).rejects.toMatchObject({
+        code: "STOCK_NOT_FOUND",
+      });
+    });
+  });
+});
+
+/**
+ * 対象: stock/StockService remove / restore
+ * 目的: 削除は更新の競合を確認し、元に戻すと一覧の問い合わせに再び現れることを担保する。
+ */
+describe("stock/StockService remove", () => {
+  const prisma = new PrismaService();
+  const service = new StockService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("画面が読んだupdatedAtが最新のとき", () => {
+    it("deletedAtを記録する", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん" },
+      });
+
+      await service.remove(user.id, stock.id, stock.updatedAt);
+
+      const stored = await prisma.stock.findUniqueOrThrow({ where: { id: stock.id } });
+      expect(stored.deletedAt).not.toBeNull();
+    });
+  });
+
+  describe("他の利用者が先に更新していたとき", () => {
+    it("削除せずAppError(STOCK_UPDATE_CONFLICT) を投げる", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん" },
+      });
+      const staleUpdatedAt = stock.updatedAt;
+      await prisma.stock.update({ where: { id: stock.id }, data: { quantity: 5 } });
+
+      await expect(service.remove(user.id, stock.id, staleUpdatedAt)).rejects.toMatchObject({
+        code: "STOCK_UPDATE_CONFLICT",
+      });
+      const stored = await prisma.stock.findUniqueOrThrow({ where: { id: stock.id } });
+      expect(stored.deletedAt).toBeNull();
+    });
+  });
+});
+
+describe("stock/StockService restore", () => {
+  const prisma = new PrismaService();
+  const service = new StockService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("削除済みの食品を指定したとき", () => {
+    it("deletedAtを空に戻す", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん", deletedAt: new Date() },
+      });
+
+      await service.restore(user.id, stock.id);
+
+      const stored = await prisma.stock.findUniqueOrThrow({ where: { id: stock.id } });
+      expect(stored.deletedAt).toBeNull();
+    });
+  });
+
+  describe("削除されていない食品を指定したとき", () => {
+    it("AppError(STOCK_NOT_FOUND) を投げる", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん" },
+      });
+
+      await expect(service.restore(user.id, stock.id)).rejects.toMatchObject({
+        code: "STOCK_NOT_FOUND",
+      });
     });
   });
 });
