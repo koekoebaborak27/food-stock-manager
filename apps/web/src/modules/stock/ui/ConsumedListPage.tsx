@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Menu, Refrigerator, RotateCcw, Snowflake } from "lucide-react";
+import { Archive, Menu, Refrigerator, RotateCcw, ShoppingCart, Snowflake } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/shared/api/api-error";
 import { clientApiFetch } from "@/shared/api/client-fetch";
 import { formatDateFromDateTime } from "@/shared/format/date";
-import { showErrorToast } from "@/shared/ui/toast";
+import { showErrorToast, showSuccessToast } from "@/shared/ui/toast";
 import { messageForCode } from "../error-messages";
 import { unitLabel } from "../stock-list-helpers";
 import type {
@@ -26,13 +26,13 @@ const storageLabels: Record<StorageType, { label: string; Icon: typeof Refrigera
 
 // 消費済リスト画面。下部タブから開き、消費済にした日付の新しい順に並べる
 // （docs/specs/02_basic-design/20_常備食管理/13_消費済リスト.md）。
-// 買い物リストへの追加は30_買い物リストの実装後に別途対応する。
 export function ConsumedListPage({ householdName }: { householdName: string }) {
   const router = useRouter();
   const [items, setItems] = useState<ConsumedStockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [reRegisteringId, setReRegisteringId] = useState<string | null>(null);
+  const [addingToShoppingListId, setAddingToShoppingListId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadConsumed();
@@ -65,6 +65,35 @@ export function ConsumedListPage({ householdName }: { householdName: string }) {
       } catch (error) {
         showErrorToast(messageForCode(error instanceof ApiError ? error.code : "SERVER_ERROR"));
         setReRegisteringId(null);
+      }
+    })();
+  }
+
+  // 食品名を商品名として買い物リストへ追加する。画面は移らず、下部の帯で伝える。
+  // 消費済リストからは外さない（13_消費済リスト.md 2節）。
+  function handleAddToShoppingList(id: string): void {
+    setAddingToShoppingListId(id);
+    void (async () => {
+      try {
+        await clientApiFetch("/api/shopping-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sourceStockId: id }),
+        });
+        showSuccessToast("買い物リストに追加しました");
+      } catch (error) {
+        const code = error instanceof ApiError ? error.code : "SERVER_ERROR";
+        showErrorToast(messageForCode(code));
+        // 重複・対象なしは一覧の状態を最新にそろえる（10_買い物リスト.md 7節）。
+        if (
+          code === "SHOPPING_ITEM_ALREADY_EXISTS" ||
+          code === "SHOPPING_ITEM_NOT_FOUND" ||
+          code === "SOURCE_STOCK_NOT_FOUND"
+        ) {
+          await loadConsumed();
+        }
+      } finally {
+        setAddingToShoppingListId(null);
       }
     })();
   }
@@ -110,6 +139,8 @@ export function ConsumedListPage({ householdName }: { householdName: string }) {
                 item={item}
                 isPending={reRegisteringId === item.id}
                 onReRegister={() => handleReRegister(item.id)}
+                isAddingToShoppingList={addingToShoppingListId === item.id}
+                onAddToShoppingList={() => handleAddToShoppingList(item.id)}
               />
             ))
           : null}
@@ -131,16 +162,20 @@ export function ConsumedListPage({ householdName }: { householdName: string }) {
   );
 }
 
-// 消費済食品1件をカードで表示する。削除の操作は置かず、常備食へ戻すことだけ並べる
-// （13_消費済リスト.md 2節）。
+// 消費済食品1件をカードで表示する。削除の操作は置かず、常備食へ戻す・買い物リストへ
+// 追加するの2つを並べる（13_消費済リスト.md 2節）。
 function ConsumedCard({
   item,
   isPending,
   onReRegister,
+  isAddingToShoppingList,
+  onAddToShoppingList,
 }: {
   item: ConsumedStockItem;
   isPending: boolean;
   onReRegister: () => void;
+  isAddingToShoppingList: boolean;
+  onAddToShoppingList: () => void;
 }) {
   const storage = storageLabels[item.storageType];
   const unit = unitLabel(item.unit);
@@ -161,17 +196,30 @@ function ConsumedCard({
       <p className="mt-2 text-sm text-muted-foreground">
         {formatDateFromDateTime(item.consumedAt)}に消費済
       </p>
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        className="mt-3 rounded-full"
-        disabled={isPending}
-        onClick={onReRegister}
-      >
-        <RotateCcw aria-hidden="true" className="size-3" />
-        常備食へ戻す
-      </Button>
+      <div className="mt-3 flex gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="rounded-full"
+          disabled={isPending}
+          onClick={onReRegister}
+        >
+          <RotateCcw aria-hidden="true" className="size-3" />
+          常備食へ戻す
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="rounded-full"
+          disabled={isAddingToShoppingList}
+          onClick={onAddToShoppingList}
+        >
+          <ShoppingCart aria-hidden="true" className="size-3" />
+          買い物リストへ追加する
+        </Button>
+      </div>
     </div>
   );
 }

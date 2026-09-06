@@ -2,20 +2,37 @@
 
 import { ChevronDown, ChevronUp, Circle, CircleCheck, Menu, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ApiError } from "@/shared/api/api-error";
 import { clientApiFetch } from "@/shared/api/client-fetch";
+import { showErrorToast, showSuccessToast } from "@/shared/ui/toast";
+import { messageForCode } from "../error-messages";
 import type { ShoppingItemListItem, ShoppingItemListResponse } from "../types";
+import { validateShoppingItemName } from "../validation";
+
+// 商品名の直下にエラーを出す失敗（10_買い物リスト.md 7節）。それ以外は帯で伝える。
+const INLINE_NAME_ERROR_CODES = new Set([
+  "SHOPPING_ITEM_NAME_REQUIRED",
+  "SHOPPING_ITEM_NAME_TOO_LONG",
+  "SHOPPING_ITEM_ALREADY_EXISTS",
+]);
 
 // 買い物リスト画面。下部タブから開き、未購入・購入済みに分けて商品を表示する
 // （docs/specs/02_basic-design/30_買い物リスト/10_買い物リスト.md）。
-// 商品の追加・購入状態の変更・削除は後続タスク（7e-3〜7e-5）で扱うため、
-// このタスクではチェック・ゴミ箱・追加ボタンを表示だけしてdisabledにしておく。
+// 購入状態の変更・削除は後続タスク（7e-4・7e-5）で扱うため、チェック・ゴミ箱は
+// 表示だけしてdisabledにしておく。
 export function ShoppingListPage({ householdName }: { householdName: string }) {
   const [items, setItems] = useState<ShoppingItemListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isPurchasedOpen, setIsPurchasedOpen] = useState(false);
+  const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
+  const [itemName, setItemName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [isAdding, startAdding] = useTransition();
 
   // 画面を開いたときだけ読み込む。開いたまま自動更新はしない（10_買い物リスト.md 6節）。
   useEffect(() => {
@@ -35,6 +52,49 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function openAddSheet(): void {
+    setItemName("");
+    setNameError(null);
+    setIsAddSheetOpen(true);
+  }
+
+  function handleNameChange(value: string): void {
+    setItemName(value);
+    if (nameError) {
+      setNameError(validateShoppingItemName(value));
+    }
+  }
+
+  // FABと空表示のボタンから開く、直接入力の追加シート（10_買い物リスト.md 3節）。
+  function handleAddSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const error = validateShoppingItemName(itemName);
+    if (error) {
+      setNameError(error);
+      return;
+    }
+
+    startAdding(async () => {
+      try {
+        await clientApiFetch<ShoppingItemListItem>("/api/shopping-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: itemName.trim() }),
+        });
+        setIsAddSheetOpen(false);
+        showSuccessToast("買い物リストに追加しました");
+        await loadItems();
+      } catch (error) {
+        const code = error instanceof ApiError ? error.code : "SERVER_ERROR";
+        if (INLINE_NAME_ERROR_CODES.has(code)) {
+          setNameError(messageForCode(code));
+          return;
+        }
+        showErrorToast(messageForCode(code));
+      }
+    });
   }
 
   const unpurchased = items.filter((item) => !item.isPurchased);
@@ -75,7 +135,11 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
           />
         ) : null}
         {!isLoading && !hasError && items.length === 0 ? (
-          <EmptyState message="買うものはまだありません。" buttonLabel="商品を追加する" disabled />
+          <EmptyState
+            message="買うものはまだありません。"
+            buttonLabel="商品を追加する"
+            onClick={openAddSheet}
+          />
         ) : null}
         {!isLoading && !hasError && items.length > 0 ? (
           <>
@@ -117,9 +181,9 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
 
       <button
         type="button"
-        disabled
+        onClick={openAddSheet}
         aria-label="商品を追加する"
-        className="fixed right-5 bottom-20 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm disabled:opacity-50"
+        className="fixed right-5 bottom-20 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
       >
         <span aria-hidden="true" className="text-3xl leading-none">
           +
@@ -134,6 +198,45 @@ export function ShoppingListPage({ householdName }: { householdName: string }) {
           消費済
         </Link>
       </nav>
+
+      {isAddSheetOpen ? (
+        <div
+          className="fixed inset-0 z-20 flex items-end bg-foreground/20"
+          role="dialog"
+          aria-modal="true"
+          aria-label="商品を追加"
+        >
+          <div className="w-full rounded-t-xl bg-popover p-4">
+            <h2 className="mb-3 text-lg font-bold">商品を追加</h2>
+            <form onSubmit={handleAddSubmit} className="flex flex-col gap-3" noValidate>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="shopping-item-name">商品名</Label>
+                <Input
+                  id="shopping-item-name"
+                  value={itemName}
+                  onChange={(event) => handleNameChange(event.target.value)}
+                  aria-invalid={nameError ? true : undefined}
+                  className="h-12 rounded-lg"
+                  autoFocus
+                />
+                {nameError ? <p className="text-sm text-destructive">{nameError}</p> : null}
+              </div>
+              <Button type="submit" disabled={isAdding} className="h-11 w-full rounded-full">
+                追加する
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isAdding}
+                className="h-11 w-full rounded-full"
+                onClick={() => setIsAddSheetOpen(false)}
+              >
+                キャンセル
+              </Button>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -189,17 +292,15 @@ function EmptyState({
   message,
   buttonLabel,
   onClick,
-  disabled,
 }: {
   message: string;
   buttonLabel: string;
   onClick?: () => void;
-  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
       <p className="max-w-xs text-sm text-muted-foreground">{message}</p>
-      <Button type="button" variant="secondary" disabled={disabled} onClick={onClick}>
+      <Button type="button" variant="secondary" onClick={onClick}>
         {buttonLabel}
       </Button>
     </div>
