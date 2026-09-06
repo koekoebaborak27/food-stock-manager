@@ -4,12 +4,17 @@
 
 ```
 99_infra/
-├─ README.md                          ← この索引（構成図・全体の流れ）
-├─ infra_design_00_概要と全体構成.md
-├─ infra_design_01_事前準備.md
-├─ infra_design_02_<サービス名>.md
-└─ ...
+├─ README.md                              ← この索引
+├─ infra_design_00_概要と全体構成.md        ← 構成図・デプロイの順序・未決事項の決定
+├─ infra_design_01_事前準備.md              ← GCPプロジェクト・Supabase・Google OAuthクライアント
+├─ infra_design_02_Artifact_Registry.md    ← イメージ置き場の作成・ビルド&push
+├─ infra_design_03_Secret_Manager.md       ← 環境変数の秘密値の登録
+├─ infra_design_04_Cloud_Run.md            ← api→webの順でのデプロイ・動作確認
+├─ infra_design_05_Cloud_Scheduler.md      ← 期限通知の配信バッチの定期実行
+└─ infra_design_06_今後の課題.md            ← CI/CD自動化・カスタムドメイン等、後回しにした事項
 ```
+
+読む順序は [`infra_design_00_概要と全体構成.md`](infra_design_00_概要と全体構成.md) の「デプロイの順序」に従うこと。
 
 書くときの注意:
 

@@ -37,6 +37,10 @@
 | [`apps/web/`](apps/web/AGENTS.md) | 画面（Next.js）。3000 番で起動 |
 | `apps/api/` | API（NestJS）。3001 番で起動 |
 
+## 本番デプロイ
+
+Cloud Run（web・api） + Supabase（PostgreSQL）に構築します。手順は [`docs/specs/99_infra/`](docs/specs/99_infra/README.md) を参照してください（2026-09-06 時点では手順書のみ作成済みで、本番環境は未構築です）。
+
 ---
 
 以下は、このリポジトリが使っている「AI 向けルールの置き方」の説明です。ベースにした AI 開発テンプレート（[ai-dev-template](https://github.com/koekoebaborak27/ai-dev-template)）由来の仕組みで、このプロジェクトでもそのまま使っています。テンプレートから新しいプロジェクトを作る手順は [`docs/development/本テンプレートPJをコピーする方法.md`](docs/development/本テンプレートPJをコピーする方法.md) にまとめてあります（このプロジェクトでは実施済み）。
