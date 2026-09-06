@@ -31,6 +31,20 @@ export interface StockDetail extends StockListItem {
   updatedByName: string | null;
 }
 
+// GET /api/stocks/consumed の一覧1件分。消費済リストの表示に使う項目だけを持つ。
+export interface ConsumedStockItem {
+  id: string;
+  name: string;
+  storageType: StorageType;
+  unit: UnitType | null;
+  consumedAt: string;
+}
+
+// GET /api/stocks/consumed の応答。
+export interface ConsumedStockListResponse {
+  items: ConsumedStockItem[];
+}
+
 // POST /api/stocks・PUT /api/stocks/{id} に送る登録・編集フォームの入力値。
 export interface StockInput {
   name: string;

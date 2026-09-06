@@ -575,3 +575,158 @@ describe("stock/StockService restore", () => {
     });
   });
 });
+
+/**
+ * 対象: stock/StockService listConsumed
+ * 目的: 消費済リストが利用者の家族グループだけを対象にし、削除済み・未消費を除いて
+ *       消費済にした日付の新しい順で返すことを実DBで担保する。
+ */
+describe("stock/StockService listConsumed", () => {
+  const prisma = new PrismaService();
+  const service = new StockService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("家族グループに所属しているとき", () => {
+    it("自分の家族グループの消費済食品だけを消費済にした日付の新しい順で返す", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const otherUser = await createUser(prisma);
+      const otherHousehold = await createHouseholdWithAdmin(prisma, otherUser.id);
+      const older = await prisma.stock.create({
+        data: {
+          householdId: household.id,
+          name: "先に消費した食品",
+          unit: "PIECE",
+          consumedAt: new Date("2026-09-01T00:00:00.000Z"),
+        },
+      });
+      const newer = await prisma.stock.create({
+        data: {
+          householdId: household.id,
+          name: "後で消費した食品",
+          consumedAt: new Date("2026-09-05T00:00:00.000Z"),
+        },
+      });
+      await prisma.stock.create({
+        data: { householdId: household.id, name: "未消費の食品" },
+      });
+      await prisma.stock.create({
+        data: {
+          householdId: household.id,
+          name: "削除済みの消費済食品",
+          deletedAt: new Date(),
+          consumedAt: new Date(),
+        },
+      });
+      await prisma.stock.create({
+        data: {
+          householdId: otherHousehold.id,
+          name: "別世帯の消費済食品",
+          consumedAt: new Date(),
+        },
+      });
+
+      const result = await service.listConsumed(user.id);
+
+      expect(result.items.map((item) => item.name)).toEqual([
+        "後で消費した食品",
+        "先に消費した食品",
+      ]);
+      expect(result.items[1]).toMatchObject({ id: older.id, unit: "PIECE" });
+      expect(result.items[0]).toMatchObject({ id: newer.id, unit: null });
+    });
+  });
+});
+
+/**
+ * 対象: stock/StockService reRegister
+ * 目的: 消費済食品の食品名・保存区分・単位だけを引き継ぎ、残数1・期限なしの
+ *       新しい常備食を作ることを実DBで担保する。
+ */
+describe("stock/StockService reRegister", () => {
+  const prisma = new PrismaService();
+  const service = new StockService(prisma);
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("自分の家族グループの消費済食品を指定したとき", () => {
+    it("食品名・保存区分・単位を引き継ぎ、残数1・期限なしの新しい行を作る", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const consumed = await prisma.stock.create({
+        data: {
+          householdId: household.id,
+          name: "にんじん",
+          storageType: "FROZEN",
+          unit: "BAG",
+          quantity: 0,
+          isHomemade: true,
+          memo: "メモ",
+          expiresOn: new Date("2026-09-01"),
+          consumedAt: new Date(),
+        },
+      });
+
+      const created = await service.reRegister(user.id, consumed.id);
+
+      expect(created).toMatchObject({
+        name: "にんじん",
+        storageType: "FROZEN",
+        unit: "BAG",
+        quantity: 1,
+        expiresOn: null,
+        isHomemade: false,
+        memo: null,
+      });
+      const stored = await prisma.stock.findUniqueOrThrow({ where: { id: created.id } });
+      expect(stored.householdId).toBe(household.id);
+      expect(stored.createdById).toBe(user.id);
+      // 元の消費済食品はそのまま残り、消費済リストからも消えない。
+      const original = await prisma.stock.findUniqueOrThrow({ where: { id: consumed.id } });
+      expect(original.consumedAt).not.toBeNull();
+    });
+  });
+
+  describe("未消費の食品を指定したとき", () => {
+    it("AppError(STOCK_NOT_FOUND) を投げる", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: household.id, name: "にんじん" },
+      });
+
+      await expect(service.reRegister(user.id, stock.id)).rejects.toMatchObject({
+        code: "STOCK_NOT_FOUND",
+      });
+    });
+  });
+
+  describe("他の家族グループの消費済食品を指定したとき", () => {
+    it("AppError(STOCK_NOT_FOUND) を投げる", async () => {
+      const user = await createUser(prisma);
+      await createHouseholdWithAdmin(prisma, user.id);
+      const otherUser = await createUser(prisma);
+      const otherHousehold = await createHouseholdWithAdmin(prisma, otherUser.id);
+      const stock = await prisma.stock.create({
+        data: { householdId: otherHousehold.id, name: "にんじん", consumedAt: new Date() },
+      });
+
+      await expect(service.reRegister(user.id, stock.id)).rejects.toMatchObject({
+        code: "STOCK_NOT_FOUND",
+      });
+    });
+  });
+});
