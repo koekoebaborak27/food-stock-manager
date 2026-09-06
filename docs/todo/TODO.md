@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-タスク7d-5・7e-1・7e-2まで`main`にマージ済み（7e-2は当初のPR #20がスタックPRのbase branch消失で自動クローズされたため、リベースしてPR #21として作り直しマージした。経緯は[履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-スタックprのbase-branchが消えて自動クローズされた不具合)）。7e-3（直接入力・常備食からの追加API/画面）は[PR #22](https://github.com/koekoebaborak27/food-stock-manager/pull/22)としてオープン中、マージは別途指示待ち。マージ後は7e-4（購入状態変更API・購入確認シート）に着手する。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
+タスク7d-5・7e-1・7e-2・7e-3まで`main`にマージ済み（7e-2は当初のPR #20がスタックPRのbase branch消失で自動クローズされたため、リベースしてPR #21として作り直しマージした。経緯は[履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-スタックprのbase-branchが消えて自動クローズされた不具合)）。次は7e-4（購入状態変更API・購入確認シート）に着手する。`.env`にGoogle OAuthのクライアントID・シークレットが未設定の場合は`.env.example`を見て設定する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -63,7 +63,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
   - [x] 7d-5. 常備食管理: 消費済リスト画面と常備食へ戻すAPIを実装する（買い物リストへ追加する操作は30_買い物リストの実装後）（2026-09-06）→ [履歴](history/2026-09-05_アカウント設定の実装.md#2026-09-06-消費済リスト画面を実装した)
   - [x] 7e-1. 買い物リスト: `ShoppingItem`のスキーマと一覧取得API（`GET /api/shopping-items`）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-shoppingitemのスキーマと一覧取得apiを実装した7e-1)
   - [x] 7e-2. 買い物リスト: 買い物リスト画面（一覧表示・未購入/購入済みの開閉・空表示）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-買い物リスト画面の一覧表示を実装した7e-2)
-  - [ ] 7e-3. 買い物リスト: 直接入力・常備食からの追加API/画面（重複判定を含む。常備食側の追加ボタンはこの後）→ [PR #22](https://github.com/koekoebaborak27/food-stock-manager/pull/22)（オープン中、マージ待ち）
+  - [x] 7e-3. 買い物リスト: 直接入力・常備食からの追加API/画面（重複判定を含む。常備食側の追加ボタンはこの後）（2026-09-06）→ [履歴](history/2026-09-06_買い物リストの実装.md#2026-09-06-直接入力常備食からの追加を実装した7e-3)
   - [ ] 7e-4. 買い物リスト: 購入状態変更API・購入確認シート（[詳細設計: 購入時の常備食反映](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)を実装）
   - [ ] 7e-5. 買い物リスト: 削除・一括削除・復元のAPI・画面（[詳細設計: 重複判定と一括操作の整合性](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)の一括部分を実装）
   - [ ] 7f以降. 期限通知（基本設計の並び順）
@@ -82,12 +82,12 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-5・7e-1・7e-2のPRはすべてマージ済み） |
+| 作業ブランチ | `main`（タスク7b・7c・7d-1〜7d-5・7e-1〜7e-3のPRはすべてマージ済み） |
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
 | 本番 | 未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項 3 件はインフラ構築時と初期版の利用後に決める |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
-| 実装 | タスク7a〜7c・7d-1〜7d-5・7e-1・7e-2完了（すべて`main`マージ済み）。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）・消費済リストの取得（`GET /api/stocks/consumed`）・常備食への再登録（`POST /api/stocks/{id}/re-register`）に加え、買い物リスト一覧の取得（`GET /api/shopping-items`）がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock` `ShoppingItem`の7テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面、常備食リスト画面・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`）・消費済リスト画面（`/stocks/consumed`）に加え、買い物リスト画面（`/shopping-list`、一覧表示のみ）が動く。買い物リストへの追加・購入状態変更・削除・常備食からの追加操作・期限通知は未着手 |
+| 実装 | タスク7a〜7c・7d-1〜7d-5・7e-1〜7e-3完了（すべて`main`マージ済み）。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`。200で`{duplicateShoppingItem}`を返す）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）・消費済リストの取得（`GET /api/stocks/consumed`）・常備食への再登録（`POST /api/stocks/{id}/re-register`）に加え、買い物リストの一覧取得・追加（`GET/POST /api/shopping-items`）がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock` `ShoppingItem`の7テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面、常備食リスト画面・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`、在庫切れシートから買い物リストへ追加可能）・消費済リスト画面（`/stocks/consumed`、買い物リストへ追加するボタン付き）に加え、買い物リスト画面（`/shopping-list`、一覧表示・FABからの直接入力追加）が動く。買い物リストの購入状態変更・削除・常備食リスト/詳細のカートアイコンからの追加・期限通知は未着手 |
 | 詳細設計 | [`10_認証と家族グループ/01_セッション設計.md`](../specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md)・[`02_家族グループの状態遷移.md`](../specs/03_detail-design/10_認証と家族グループ/02_家族グループの状態遷移.md)、[`30_買い物リスト/01_購入時の常備食反映.md`](../specs/03_detail-design/30_買い物リスト/01_購入時の常備食反映.md)・[`02_重複判定と一括操作の整合性.md`](../specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md)まで着手。他は未着手（[`docs/specs/03_detail-design/`](../specs/03_detail-design/README.md)。必要な機能のみ書く方針） |
 
 ## 完了済みの作業
