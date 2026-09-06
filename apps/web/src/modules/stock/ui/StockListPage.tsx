@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/shared/api/api-error";
@@ -44,10 +45,13 @@ const sortOptions: Array<{ value: StockSort; label: string }> = [
 
 // 常備食リスト画面。APIから食品を読み、保存区分・検索・並び替え・期限の絞り込みを行う。
 export function StockListPage({ householdName }: { householdName: string }) {
+  const searchParams = useSearchParams();
   const [storageType, setStorageType] = useState<StorageType | null>(null);
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<StockSort>("EXPIRY");
-  const [urgentOnly, setUrgentOnly] = useState(false);
+  // 期限通知を押して開いたときは、期限が近い食品だけに絞り込んだ状態で始める
+  // （docs/specs/03_detail-design/40_期限通知/01_Web_Push配信処理.md 6節）。
+  const [urgentOnly, setUrgentOnly] = useState(() => searchParams.get("urgentOnly") === "true");
   const [items, setItems] = useState<StockListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);

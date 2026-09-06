@@ -302,6 +302,19 @@ export class StockService {
     }
   }
 
+  // 指定した世帯の、期限切れ・今日・明日が期限の常備食の件数を返す（削除済み・消費済は除く）。
+  // 期限通知の配信バッチ（40_期限通知/02_API.md 4節）が対象件数を数えるのに使う。
+  async countUrgent(householdId: string, now = new Date()): Promise<number> {
+    return this.prisma.stock.count({
+      where: {
+        householdId,
+        deletedAt: null,
+        consumedAt: null,
+        ...createUrgentWhere(now),
+      },
+    });
+  }
+
   // ログインしている利用者が所属する家族グループを引く。未所属ならNO_HOUSEHOLDにする。
   private async getMembership(userId: string): Promise<Membership> {
     const membership = await this.prisma.membership.findUnique({ where: { userId } });

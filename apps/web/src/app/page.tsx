@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { getSession } from "@/modules/auth";
 import { getMyHousehold } from "@/modules/household";
 import { StockListPage } from "@/modules/stock";
@@ -12,5 +13,10 @@ export default async function Home() {
   }
 
   const household = await getMyHousehold();
-  return <StockListPage householdName={household.name} />;
+  // StockListPageがURLのurgentOnlyを読む（useSearchParams）ためSuspenseで包む。
+  return (
+    <Suspense>
+      <StockListPage householdName={household.name} />
+    </Suspense>
+  );
 }

@@ -784,3 +784,78 @@ describe("stock/StockService reRegister", () => {
     });
   });
 });
+
+/**
+ * 対象: stock/StockService countUrgent
+ * 目的: 期限切れ・今日・明日が期限の食品だけを数え、削除済み・消費済み・
+ *       期限が2日以上先の食品・他世帯の食品を数えないことを実DBで担保する。
+ */
+describe("stock/StockService countUrgent", () => {
+  const prisma = new PrismaService();
+  const service = createStockService(prisma);
+  const now = new Date("2026-09-06T00:00:00.000Z"); // 日本時間 2026-09-06 09:00
+
+  beforeEach(async () => {
+    await cleanDatabase(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("期限切れ・今日・明日が期限の食品があるとき", () => {
+    it("それらだけを数える", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+      const otherUser = await createUser(prisma);
+      const otherHousehold = await createHouseholdWithAdmin(prisma, otherUser.id);
+      await prisma.stock.createMany({
+        data: [
+          { householdId: household.id, name: "期限切れ", expiresOn: new Date("2026-09-05") },
+          { householdId: household.id, name: "今日が期限", expiresOn: new Date("2026-09-06") },
+          { householdId: household.id, name: "明日が期限", expiresOn: new Date("2026-09-07") },
+          { householdId: household.id, name: "あさってが期限", expiresOn: new Date("2026-09-08") },
+          { householdId: household.id, name: "期限なし" },
+        ],
+      });
+      await prisma.stock.create({
+        data: {
+          householdId: household.id,
+          name: "削除済み・今日が期限",
+          expiresOn: new Date("2026-09-06"),
+          deletedAt: new Date(),
+        },
+      });
+      await prisma.stock.create({
+        data: {
+          householdId: household.id,
+          name: "消費済み・今日が期限",
+          expiresOn: new Date("2026-09-06"),
+          consumedAt: new Date(),
+        },
+      });
+      await prisma.stock.create({
+        data: {
+          householdId: otherHousehold.id,
+          name: "別世帯・今日が期限",
+          expiresOn: new Date("2026-09-06"),
+        },
+      });
+
+      const count = await service.countUrgent(household.id, now);
+
+      expect(count).toBe(3);
+    });
+  });
+
+  describe("対象の食品が無いとき", () => {
+    it("0を返す", async () => {
+      const user = await createUser(prisma);
+      const household = await createHouseholdWithAdmin(prisma, user.id);
+
+      const count = await service.countUrgent(household.id, now);
+
+      expect(count).toBe(0);
+    });
+  });
+});
