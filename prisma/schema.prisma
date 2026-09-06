@@ -45,22 +45,24 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  memberships Membership[]
-  invitations Invitation[]
-  sessions    Session[]
-  createdStocks Stock[] @relation("StockCreatedBy")
-  updatedStocks Stock[] @relation("StockUpdatedBy")
+  memberships          Membership[]
+  invitations          Invitation[]
+  sessions             Session[]
+  createdStocks        Stock[]        @relation("StockCreatedBy")
+  updatedStocks        Stock[]        @relation("StockUpdatedBy")
+  createdShoppingItems ShoppingItem[] @relation("ShoppingItemCreatedBy")
+  updatedShoppingItems ShoppingItem[] @relation("ShoppingItemUpdatedBy")
 }
 
 // ログインのセッション。詳細は docs/specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md。
 // Cookieには生トークンだけを入れ、ここにはそのハッシュだけを持つ。
 model Session {
-  id         String   @id @default(uuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -74,9 +76,10 @@ model Household {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships Membership[]
-  invitations Invitation[]
-  stocks      Stock[]
+  memberships   Membership[]
+  invitations   Invitation[]
+  stocks        Stock[]
+  shoppingItems ShoppingItem[]
 }
 
 // 誰がどの家族グループに属しているか。1人が同時に所属できる家族グループは1つ。
@@ -112,26 +115,52 @@ model Invitation {
 
 // 家族グループで共有する常備食。消費済・削除済も行を残して区別する。
 model Stock {
-  id            String      @id @default(uuid())
-  householdId   String
-  name          String
-  storageType   StorageType @default(REFRIGERATED)
-  quantity      Int         @default(1)
-  unit          UnitType?
-  expiresOn     DateTime?   @db.Date
-  isHomemade    Boolean     @default(false)
-  memo          String?
-  consumedAt    DateTime?
-  createdById   String?
-  updatedById   String?
-  deletedAt     DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id          String      @id @default(uuid())
+  householdId String
+  name        String
+  storageType StorageType @default(REFRIGERATED)
+  quantity    Int         @default(1)
+  unit        UnitType?
+  expiresOn   DateTime?   @db.Date
+  isHomemade  Boolean     @default(false)
+  memo        String?
+  consumedAt  DateTime?
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
-  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  createdBy User? @relation("StockCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy User? @relation("StockUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  household     Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy     User?          @relation("StockCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?          @relation("StockUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  shoppingItems ShoppingItem[]
 
   @@index([householdId])
   @@index([householdId, deletedAt, consumedAt, expiresOn])
+}
+
+// 買い物リストの商品。常備食から追加した場合はsourceStockIdに元のStockを記録するが、
+// 追加時に食品名を写しているため、常備食の名称変更や削除は商品名に影響しない。
+// 同じ世帯・未購入・未削除の商品名を重複させない一意制約は、
+// docs/specs/03_detail-design/30_買い物リスト/02_重複判定と一括操作の整合性.md のとおり
+// マイグレーションのSQLへ手で足す部分一意索引で実現するため、ここには書けない。
+model ShoppingItem {
+  id            String    @id @default(uuid())
+  householdId   String
+  name          String
+  isPurchased   Boolean   @default(false)
+  sourceStockId String?
+  createdById   String?
+  updatedById   String?
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  sourceStock Stock?    @relation(fields: [sourceStockId], references: [id], onDelete: SetNull)
+  createdBy   User?     @relation("ShoppingItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?     @relation("ShoppingItemUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([householdId, deletedAt, isPurchased, name])
 }
