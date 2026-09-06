@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-機能実装（タスク7）・タスク8（Dockerfile）は完了済み。タスク9（Cloud Runへのデプロイ）は未決事項の決定と手順書作成まで終わり（詳細は[履歴](history/2026-09-06_インフラ構築の準備.md)）、次は実際の構築。[`docs/specs/99_infra/infra_design_01_事前準備.md`](../specs/99_infra/infra_design_01_事前準備.md)からGCPプロジェクト・Supabase・Google OAuthクライアントの作成を順に進める（GCPコンソール・Supabaseの操作はユーザーの手作業。エージェントは`gcloud`コマンドの提示までを行う）。
+機能実装（タスク7）・タスク8（Dockerfile）は完了済み。タスク9（Cloud Runへのデプロイ）は、GCPプロジェクト作成〜api/webのCloud Runデプロイ・動作確認（ログイン→常備食登録→Supabase反映）まで完了（詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)）。次は[`infra_design_05_Cloud_Scheduler.md`](../specs/99_infra/infra_design_05_Cloud_Scheduler.md)どおりに配信バッチの定期実行ジョブを作成し、実際に通知が届くか確認する（9c）。その後、GitHub ActionsからCloud Runへの自動デプロイ（CI/CD、タスク10）に着手する。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -72,7 +72,9 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
   - [x] 7f-4. 期限通知: 配信バッチAPI(`POST /api/internal/notifications/dispatch`)を実装する（[詳細設計: Web Push配信処理](../specs/03_detail-design/40_期限通知/01_Web_Push配信処理.md)を先に書く）（2026-09-06）→ [履歴](history/2026-09-06_期限通知の実装.md#2026-09-06-配信バッチapiを実装した7f-4)
 - [x] **8. Dockerfile を web / api の 2 つ書き、ローカルで `docker build` → `docker run` が通ることを確認する**（2026-09-06）→ [履歴](history/2026-09-06_Dockerfileの作成.md)
 - [x] **9a. 未決事項（Cloud Runの最小インスタンス数・Supabaseのバックアップ）を決め、Cloud Runへのデプロイ手順書を書く**（2026-09-06）→ [履歴](history/2026-09-06_インフラ構築の準備.md)
-- [ ] 9b. 手順書（[`docs/specs/99_infra/`](../specs/99_infra/README.md)）どおりにGCPプロジェクト・Artifact Registry・Secret Manager・Cloud Run（api→web）・Cloud Schedulerを実際に構築する。
+- [x] **9b. GCPプロジェクト・Artifact Registry・Secret Manager・Cloud Run（api→web）を実際に構築し、ログイン〜常備食登録〜Supabase反映まで動作確認する**（2026-09-06）→ [履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)
+- [ ] 9c. [`infra_design_05_Cloud_Scheduler.md`](../specs/99_infra/infra_design_05_Cloud_Scheduler.md)どおりに配信バッチの定期実行ジョブ（15分ごと）を作成し、実際にWeb Push通知が届くか確認する。
+- [ ] 10. GitHub ActionsからCloud Runへの自動デプロイ（CI/CD）を設定する（[`infra_design_06_今後の課題.md`](../specs/99_infra/infra_design_06_今後の課題.md)。手動デプロイが安定して動くことを確認できたため着手してよい）。
 
 ## 残っているタスク
 
@@ -86,9 +88,9 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main`（タスク7・8のPRはすべてマージ済み） |
-| ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` / `pnpm build` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う |
-| 本番 | 未構築。`apps/web/Dockerfile`・`apps/api/Dockerfile`を作成し、`docker build`→`docker run`でのローカル起動・DB疎通・web→apiのリバースプロキシ疎通まで確認済み（詳細は[履歴](history/2026-09-06_Dockerfileの作成.md)）。デプロイ手順書は[`docs/specs/99_infra/`](../specs/99_infra/README.md)に作成済み（詳細は[履歴](history/2026-09-06_インフラ構築の準備.md)） |
+| 作業ブランチ | `main`（タスク7・8・9a・9b・#30・#31のPRはすべてマージ済み） |
+| ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` / `pnpm build` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う。ローカルの`.env`には`DIRECT_URL`も必要（`DATABASE_URL`と同じ値でよい） |
+| 本番 | 構築済み（GCPプロジェクト`food-stock-manager-507709`、リージョン`asia-northeast1`）。web: `https://web-450943687130.asia-northeast1.run.app`、api: `https://api-450943687130.asia-northeast1.run.app`。DBはSupabase（Tokyo）、マイグレーション適用済み。ログイン〜常備食登録〜Supabase反映まで動作確認済み。デプロイ手順は[`docs/specs/99_infra/`](../specs/99_infra/README.md)、詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)。Cloud Scheduler（配信バッチの定期実行）とCI/CD（自動デプロイ）は未構築 |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項は「単位の選択肢6種が実際の利用に足りるか」の1件のみ（初期版の利用後に決める） |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
 | 実装 | タスク7a〜7c・7d-1〜7d-5・7e-1〜7e-5・7f-1〜7f-4すべて`main`マージ済み。機能実装（タスク7）が完了。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`。200で`{duplicateShoppingItem}`を返す）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）・消費済リストの取得（`GET /api/stocks/consumed`）・常備食への再登録（`POST /api/stocks/{id}/re-register`）に加え、買い物リストの一覧取得・追加（`GET/POST /api/shopping-items`）・購入状態変更（`PATCH /api/shopping-items/{id}/purchased`。常備食への反映を含む）・1件削除（`DELETE /api/shopping-items/{id}`）・購入済み一括削除（`DELETE /api/shopping-items/purchased`）・復元（`POST /api/shopping-items/restore`）・期限通知の通知時刻API（`GET/PATCH /api/notification-settings`）・購読API（`GET/POST /api/push-subscriptions`・`DELETE /api/push-subscriptions/me`）・配信バッチ（`POST /api/internal/notifications/dispatch`。Cloud Schedulerからの`X-Internal-Secret`ヘッダーで認証し、通知時刻が一致し当日未配信の世帯を確保して`StockService.countUrgent`で件数を数え、`web-push`で配信。`apps/api/src/notification-dispatch/`）がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock` `ShoppingItem` `PushSubscription` `NotificationSetting`の9テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面、常備食リスト画面（`urgentOnly=true`のURL絞り込みに対応）・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`、在庫切れシートから買い物リストへ追加可能）・消費済リスト画面（`/stocks/consumed`、買い物リストへ追加するボタン付き）・買い物リスト画面（`/shopping-list`、一覧表示・FABからの直接入力追加・購入確認シート付きのチェック操作・削除/一括削除/復元）・PWAの土台（`public/manifest.json` `sw.js` `icons/`）・通知の設定画面（`/notifications`、通知トグルと通知時刻選択を即保存）が動く。常備食リスト/詳細のカートアイコンからの追加は未着手 |

@@ -39,7 +39,7 @@
 
 ## 本番デプロイ
 
-Cloud Run（web・api） + Supabase（PostgreSQL）に構築します。手順は [`docs/specs/99_infra/`](docs/specs/99_infra/README.md) を参照してください（2026-09-06 時点では手順書のみ作成済みで、本番環境は未構築です）。
+Cloud Run（web・api） + Supabase（PostgreSQL）に構築しています。手順は [`docs/specs/99_infra/`](docs/specs/99_infra/README.md) を参照してください。配信バッチの定期実行（Cloud Scheduler）と自動デプロイ（CI/CD）はまだ設定していません（[`docs/todo/TODO.md`](docs/todo/TODO.md)参照）。
 
 ---
 
