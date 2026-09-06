@@ -48,10 +48,11 @@ model User {
   memberships          Membership[]
   invitations          Invitation[]
   sessions             Session[]
-  createdStocks        Stock[]        @relation("StockCreatedBy")
-  updatedStocks        Stock[]        @relation("StockUpdatedBy")
-  createdShoppingItems ShoppingItem[] @relation("ShoppingItemCreatedBy")
-  updatedShoppingItems ShoppingItem[] @relation("ShoppingItemUpdatedBy")
+  createdStocks        Stock[]           @relation("StockCreatedBy")
+  updatedStocks        Stock[]           @relation("StockUpdatedBy")
+  createdShoppingItems ShoppingItem[]    @relation("ShoppingItemCreatedBy")
+  updatedShoppingItems ShoppingItem[]    @relation("ShoppingItemUpdatedBy")
+  pushSubscription     PushSubscription?
 }
 
 // ログインのセッション。詳細は docs/specs/03_detail-design/10_認証と家族グループ/01_セッション設計.md。
@@ -76,10 +77,11 @@ model Household {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships   Membership[]
-  invitations   Invitation[]
-  stocks        Stock[]
-  shoppingItems ShoppingItem[]
+  memberships         Membership[]
+  invitations         Invitation[]
+  stocks              Stock[]
+  shoppingItems       ShoppingItem[]
+  notificationSetting NotificationSetting?
 }
 
 // 誰がどの家族グループに属しているか。1人が同時に所属できる家族グループは1つ。
@@ -163,4 +165,33 @@ model ShoppingItem {
   updatedBy   User?     @relation("ShoppingItemUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@index([householdId, deletedAt, isPurchased, name])
+}
+
+// 通知を送る先の端末（ブラウザの購読情報）。householdIdは持たせない。配信時はUser→Membership
+// をたどって世帯を判定する（docs/specs/02_basic-design/40_期限通知/01_データベース.md 1節）。
+// 通知を受け取るかどうかの状態は行の有無で表し、専用の真偽値の列は持たない。
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 家族グループ単位の通知時刻。行が存在しない世帯は8:00・未配信として扱う
+// （同ドキュメント2節）。notifyMinuteが0/15/30/45のみである確認はAPI層で行う。
+model NotificationSetting {
+  id             String    @id @default(uuid())
+  householdId    String    @unique
+  notifyHour     Int       @default(8)
+  notifyMinute   Int       @default(0)
+  lastNotifiedOn DateTime? @db.Date
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }

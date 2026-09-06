@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { AuthModule } from "./auth/auth.module";
 import { HouseholdModule } from "./household/household.module";
+import { NotificationSettingModule } from "./notification-setting/notification-setting.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ShoppingItemModule } from "./shopping-item/shopping-item.module";
 import { StockModule } from "./stock/stock.module";
@@ -15,6 +16,7 @@ import { UsersModule } from "./users/users.module";
     HouseholdModule,
     StockModule,
     ShoppingItemModule,
+    NotificationSettingModule,
     UsersModule,
   ],
   controllers: [AppController],
