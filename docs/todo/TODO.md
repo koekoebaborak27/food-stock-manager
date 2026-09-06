@@ -75,6 +75,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 - [x] **9b. GCPプロジェクト・Artifact Registry・Secret Manager・Cloud Run（api→web）を実際に構築し、ログイン〜常備食登録〜Supabase反映まで動作確認する**（2026-09-06）→ [履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)
 - [ ] 9c. [`infra_design_05_Cloud_Scheduler.md`](../specs/99_infra/infra_design_05_Cloud_Scheduler.md)どおりに配信バッチの定期実行ジョブ（15分ごと）を作成し、実際にWeb Push通知が届くか確認する。
 - [ ] 10. GitHub ActionsからCloud Runへの自動デプロイ（CI/CD）を設定する（[`infra_design_06_今後の課題.md`](../specs/99_infra/infra_design_06_今後の課題.md)。手動デプロイが安定して動くことを確認できたため着手してよい）。
+- [ ] 11. アプリアイコンを[`アプリアイコン画像.png`](../specs/02_basic-design/99_デザインイメージ/アプリアイコン画像.png)に差し替える。`apps/web/public/icons/`配下の`icon-192.png` `icon-512.png` `icon-maskable-512.png` `apple-touch-icon.png`が対象（必要なサイズへのリサイズを含む）。
 
 ## 残っているタスク
 
