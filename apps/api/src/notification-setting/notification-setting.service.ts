@@ -5,7 +5,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import type { NotificationTimeInput } from "./validation";
 
 // 既定の通知時刻。行が存在しない世帯はこの値として扱う（01_データベース.md 2節）。
-const DEFAULT_NOTIFICATION_TIME = { hour: 8, minute: 0 };
+// 配信バッチ（notification-dispatch）も、行が無い世帯を対象にするかどうかの判定に使う。
+export const DEFAULT_NOTIFICATION_TIME = { hour: 8, minute: 0 };
 
 export interface NotificationTime {
   hour: number;

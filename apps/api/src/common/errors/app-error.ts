@@ -18,6 +18,8 @@ export const Errors = {
   forbidden: (): AppError => new AppError("FORBIDDEN", HttpStatus.FORBIDDEN),
   noHousehold: (): AppError => new AppError("NO_HOUSEHOLD", HttpStatus.FORBIDDEN),
   notFound: (): AppError => new AppError("NOT_FOUND", HttpStatus.NOT_FOUND),
+  internalUnauthorized: (): AppError =>
+    new AppError("INTERNAL_UNAUTHORIZED", HttpStatus.UNAUTHORIZED),
   validation: (details: Record<string, unknown>): AppError =>
     new AppError("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, details),
   conflict: (code = "CONFLICT"): AppError => new AppError(code, HttpStatus.CONFLICT),
