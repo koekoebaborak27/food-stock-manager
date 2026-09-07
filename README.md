@@ -39,7 +39,7 @@
 
 ## 本番デプロイ
 
-Cloud Run（web・api） + Supabase（PostgreSQL）に構築しています。手順は [`docs/specs/99_infra/`](docs/specs/99_infra/README.md) を参照してください。配信バッチの定期実行（Cloud Scheduler）と自動デプロイ（CI/CD）はまだ設定していません（[`docs/todo/TODO.md`](docs/todo/TODO.md)参照）。
+Cloud Run（web・api） + Supabase（PostgreSQL）に構築しています。手順は [`docs/specs/99_infra/`](docs/specs/99_infra/README.md) を参照してください。配信バッチの定期実行（Cloud Scheduler）は設定済みです。`main` への自動デプロイ（GitHub Actions → Cloud Run、Workload Identity 連携）は設定中です（[`docs/todo/TODO.md`](docs/todo/TODO.md)参照）。
 
 ---
 

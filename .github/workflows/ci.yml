@@ -82,3 +82,98 @@ jobs:
       # フレームワークを導入して package.json に build を追加したら、次を有効にする。
       # - name: Build
       #   run: pnpm build
+
+  # mainへのpush（verify成功後）でのみ、Cloud Runへ自動デプロイする。
+  # pull_requestでは動かさない（本番のCloud Runサービスを差し替える操作のため）。
+  # 手順の正本はdocs/specs/99_infra/infra_design_07_CI_CDの自動化.md。
+  deploy-api:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Workload Identity連携でOIDCトークンを発行するために必須
+    outputs:
+      api_url: ${{ steps.api-url.outputs.url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+
+      - name: Build and push api image
+        env:
+          IMAGE: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/food-stock-manager/api:${{ github.sha }}
+        run: |
+          docker build -f apps/api/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      # apiには環境変数依存のビルド時引数がないため、mainのイメージが本番用そのまま。
+      - name: Deploy api to Cloud Run
+        env:
+          IMAGE: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/food-stock-manager/api:${{ github.sha }}
+        run: |
+          gcloud run deploy api \
+            --image="$IMAGE" \
+            --region=asia-northeast1 \
+            --platform=managed \
+            --allow-unauthenticated \
+            --min-instances=0 \
+            --max-instances=2 \
+            --set-secrets=DATABASE_URL=database-url:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,GOOGLE_CALLBACK_URL=google-callback-url:latest,WEB_BASE_URL=web-base-url:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,VAPID_SUBJECT=vapid-subject:latest,INTERNAL_NOTIFICATION_SECRET=internal-notification-secret:latest
+
+      - id: api-url
+        run: echo "url=$(gcloud run services describe api --region=asia-northeast1 --format='value(status.url)')" >> "$GITHUB_OUTPUT"
+
+  # webはapiのURLをビルド時に焼き込む制約があるため、deploy-apiの完了を待つ
+  # （docs/specs/99_infra/infra_design_02_Artifact_Registry.md参照）。
+  deploy-web:
+    needs: deploy-api
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+
+      - name: Build and push web image
+        env:
+          IMAGE: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/food-stock-manager/web:${{ github.sha }}
+          API_BASE_URL: ${{ needs.deploy-api.outputs.api_url }}
+        run: |
+          docker build -f apps/web/Dockerfile \
+            --build-arg API_BASE_URL="$API_BASE_URL" \
+            --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY="${{ secrets.VAPID_PUBLIC_KEY }}" \
+            -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy web to Cloud Run
+        env:
+          IMAGE: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/food-stock-manager/web:${{ github.sha }}
+        run: |
+          gcloud run deploy web \
+            --image="$IMAGE" \
+            --region=asia-northeast1 \
+            --platform=managed \
+            --allow-unauthenticated \
+            --min-instances=0 \
+            --max-instances=2
