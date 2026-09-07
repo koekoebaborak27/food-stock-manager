@@ -41,7 +41,7 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-機能実装（タスク7）・タスク8（Dockerfile）・タスク9（Cloud Runへのデプロイ、Cloud Scheduler設定含む）・タスク10（CI/CD自動デプロイ）はすべて完了済み（詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)・[履歴](history/2026-09-07_Cloud_Schedulerの設定.md)・[履歴](history/2026-09-07_CI_CDの自動化.md)）。次はタスク11（アプリアイコンの差し替え）に着手する。
+機能実装（タスク7）〜タスク11（アプリアイコンの差し替え）まですべて完了済み（詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)・[履歴](history/2026-09-07_Cloud_Schedulerの設定.md)・[履歴](history/2026-09-07_CI_CDの自動化.md)・[履歴](history/2026-09-07_アプリアイコンの差し替え.md)）。現時点で残っている実装タスクはない。タスク11のPRのレビュー・マージ、または新規タスクの指示を待つ。
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -75,7 +75,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 - [x] **9b. GCPプロジェクト・Artifact Registry・Secret Manager・Cloud Run（api→web）を実際に構築し、ログイン〜常備食登録〜Supabase反映まで動作確認する**（2026-09-06）→ [履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)
 - [x] **9c. [`infra_design_05_Cloud_Scheduler.md`](../specs/99_infra/infra_design_05_Cloud_Scheduler.md)どおりに配信バッチの定期実行ジョブ（15分ごと）を作成し、実際にWeb Push通知が届くか確認する**（2026-09-07）→ [履歴](history/2026-09-07_Cloud_Schedulerの設定.md)
 - [x] **10. GitHub ActionsからCloud Runへの自動デプロイ（CI/CD）を設定する**（[`infra_design_07_CI_CDの自動化.md`](../specs/99_infra/infra_design_07_CI_CDの自動化.md)、2026-09-07）→ [履歴](history/2026-09-07_CI_CDの自動化.md)
-- [ ] 11. アプリアイコンを[`アプリアイコン画像.png`](../specs/02_basic-design/99_デザインイメージ/アプリアイコン画像.png)に差し替える。`apps/web/public/icons/`配下の`icon-192.png` `icon-512.png` `icon-maskable-512.png` `apple-touch-icon.png`が対象（必要なサイズへのリサイズを含む）。
+- [x] **11. アプリアイコンを[`アプリアイコン画像.png`](../specs/02_basic-design/99_デザインイメージ/アプリアイコン画像.png)に差し替える**（2026-09-07）→ [履歴](history/2026-09-07_アプリアイコンの差し替え.md)
 
 ## 残っているタスク
 
@@ -89,7 +89,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main`（タスク7・8・9a・9b・10・#30・#31・#32のPRはすべてマージ済み） |
+| 作業ブランチ | `main`（タスク7・8・9a・9b・10・#30・#31・#32のPRはすべてマージ済み）。タスク11は`codex/task11-app-icon`ブランチで作業しPRを作成済み（マージ待ち） |
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` / `pnpm build` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う。ローカルの`.env`には`DIRECT_URL`も必要（`DATABASE_URL`と同じ値でよい） |
 | 本番 | 構築済み（GCPプロジェクト`food-stock-manager-507709`、リージョン`asia-northeast1`）。web: `https://web-450943687130.asia-northeast1.run.app`、api: `https://api-450943687130.asia-northeast1.run.app`。DBはSupabase（Tokyo）、マイグレーション適用済み。ログイン〜常備食登録〜Supabase反映まで動作確認済み。Cloud Schedulerジョブ`notification-dispatch`（15分ごと）を作成し、Web Push通知の到達まで確認済み（詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)・[履歴](history/2026-09-07_Cloud_Schedulerの設定.md)）。デプロイ手順は[`docs/specs/99_infra/`](../specs/99_infra/README.md)。CI/CD（`main`へのpushでCloud Runへ自動デプロイ、Workload Identity連携）は構築済みで、実際のpushでの成功も確認済み（[履歴](history/2026-09-07_CI_CDの自動化.md)） |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項は「単位の選択肢6種が実際の利用に足りるか」の1件のみ（初期版の利用後に決める） |
