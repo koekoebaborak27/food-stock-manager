@@ -6,7 +6,7 @@
 | --- | --- |
 | [開発環境.md](開発環境.md) | pnpm workspace での依存の入れ方、TypeScript 6 の設定、自動生成ファイルの扱い |
 | [DB.md](DB.md) | Prismaのバージョン選定、モノレポでの依存の入れ方、ローカルPostgres（Docker）の設定 |
-| [インフラ構築.md](インフラ構築.md) | Windows + Git Bashでの`gcloud`呼び出し方、PowerShellでの引数の引用符、Artifact Registry作成時の注意 |
+| [インフラ構築.md](インフラ構築.md) | Windows + Git Bashでの`gcloud`呼び出し方、PowerShellでの引数の引用符、Artifact Registry作成時の注意、引数にスペースを含む場合の`--flags-file`回避 |
 
 ## 書き方
 
