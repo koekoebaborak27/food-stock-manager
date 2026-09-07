@@ -41,7 +41,13 @@ pnpm prisma:generate     # Prisma Client を生成（clone直後・スキーマ�
 docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 ```
 
-機能実装（タスク7）・タスク8（Dockerfile）・タスク9（Cloud Runへのデプロイ、Cloud Scheduler設定含む）はすべて完了済み（詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)・[履歴](history/2026-09-07_Cloud_Schedulerの設定.md)）。次はGitHub ActionsからCloud Runへの自動デプロイ（CI/CD、タスク10）に着手する。方針は[`infra_design_06_今後の課題.md`](../specs/99_infra/infra_design_06_今後の課題.md)の1節を参照。
+機能実装（タスク7）・タスク8（Dockerfile）・タスク9（Cloud Runへのデプロイ、Cloud Scheduler設定含む）はすべて完了済み（詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)・[履歴](history/2026-09-07_Cloud_Schedulerの設定.md)）。タスク10（CI/CD）はGCP側の準備とワークフロー追加を終えてPR作成済み（[履歴](history/2026-09-07_CI_CDの自動化.md)）。次のセッションはこのPRをマージし、GitHubの「Actions」タブで`verify`→`deploy-api`→`deploy-web`が緑になること・本番URLへ反映されることを確認する。
+
+```powershell
+gh pr list --search "task10-cicd"   # 対象PRを確認
+gh pr merge <PR番号> --squash        # マージ（内容を確認したうえで）
+gh run watch                        # Actionsの実行を追う
+```
 
 - [x] **1. 画面遷移図を作る**（2026-09-05）→ [履歴](history/2026-09-05_画面遷移図の作成.md)
 - [x] **2. 未決事項を決める**（2026-09-05）→ [履歴](history/2026-09-05_未決事項の決定.md)
@@ -74,7 +80,7 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 - [x] **9a. 未決事項（Cloud Runの最小インスタンス数・Supabaseのバックアップ）を決め、Cloud Runへのデプロイ手順書を書く**（2026-09-06）→ [履歴](history/2026-09-06_インフラ構築の準備.md)
 - [x] **9b. GCPプロジェクト・Artifact Registry・Secret Manager・Cloud Run（api→web）を実際に構築し、ログイン〜常備食登録〜Supabase反映まで動作確認する**（2026-09-06）→ [履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)
 - [x] **9c. [`infra_design_05_Cloud_Scheduler.md`](../specs/99_infra/infra_design_05_Cloud_Scheduler.md)どおりに配信バッチの定期実行ジョブ（15分ごと）を作成し、実際にWeb Push通知が届くか確認する**（2026-09-07）→ [履歴](history/2026-09-07_Cloud_Schedulerの設定.md)
-- [ ] 10. GitHub ActionsからCloud Runへの自動デプロイ（CI/CD）を設定する（[`infra_design_06_今後の課題.md`](../specs/99_infra/infra_design_06_今後の課題.md)。手動デプロイが安定して動くことを確認できたため着手してよい）。
+- [ ] 10. GitHub ActionsからCloud Runへの自動デプロイ（CI/CD）を設定する（[`infra_design_07_CI_CDの自動化.md`](../specs/99_infra/infra_design_07_CI_CDの自動化.md)）。GCP側のWorkload Identity連携・ワークフロー追加・GitHub Secrets登録は完了しPR作成済み（2026-09-07）→ [履歴](history/2026-09-07_CI_CDの自動化.md)。**残り: PRのマージと、実際のCI実行での動作確認。**
 - [ ] 11. アプリアイコンを[`アプリアイコン画像.png`](../specs/02_basic-design/99_デザインイメージ/アプリアイコン画像.png)に差し替える。`apps/web/public/icons/`配下の`icon-192.png` `icon-512.png` `icon-maskable-512.png` `apple-touch-icon.png`が対象（必要なサイズへのリサイズを含む）。
 
 ## 残っているタスク
@@ -89,9 +95,9 @@ docker compose -f docker/docker-compose.yml up -d db   # ローカルDBを起動
 
 | 項目 | 状態 |
 | --- | --- |
-| 作業ブランチ | `main`（タスク7・8・9a・9b・#30・#31のPRはすべてマージ済み） |
+| 作業ブランチ | `main`（タスク7・8・9a・9b・#30・#31のPRはすべてマージ済み）。タスク10は`codex/task10-cicd-workload-identity`でPR作成済み・マージ待ち |
 | ローカル環境 | 構築済み（`pnpm install` 実行済み。`pnpm lint` / `format:check` / `typecheck` / `test` / `pnpm build` が通る）。`pnpm dev:web` で画面（3000 番）、`pnpm dev:api` で API（3001 番）が起動する。DBは`docker compose -f docker/docker-compose.yml up -d db`でローカルPostgresを起動して使う。ローカルの`.env`には`DIRECT_URL`も必要（`DATABASE_URL`と同じ値でよい） |
-| 本番 | 構築済み（GCPプロジェクト`food-stock-manager-507709`、リージョン`asia-northeast1`）。web: `https://web-450943687130.asia-northeast1.run.app`、api: `https://api-450943687130.asia-northeast1.run.app`。DBはSupabase（Tokyo）、マイグレーション適用済み。ログイン〜常備食登録〜Supabase反映まで動作確認済み。Cloud Schedulerジョブ`notification-dispatch`（15分ごと）を作成し、Web Push通知の到達まで確認済み（詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)・[履歴](history/2026-09-07_Cloud_Schedulerの設定.md)）。デプロイ手順は[`docs/specs/99_infra/`](../specs/99_infra/README.md)。CI/CD（自動デプロイ）は未構築 |
+| 本番 | 構築済み（GCPプロジェクト`food-stock-manager-507709`、リージョン`asia-northeast1`）。web: `https://web-450943687130.asia-northeast1.run.app`、api: `https://api-450943687130.asia-northeast1.run.app`。DBはSupabase（Tokyo）、マイグレーション適用済み。ログイン〜常備食登録〜Supabase反映まで動作確認済み。Cloud Schedulerジョブ`notification-dispatch`（15分ごと）を作成し、Web Push通知の到達まで確認済み（詳細は[履歴](history/2026-09-06_Cloud_Runへのデプロイ.md)・[履歴](history/2026-09-07_Cloud_Schedulerの設定.md)）。デプロイ手順は[`docs/specs/99_infra/`](../specs/99_infra/README.md)。CI/CD（自動デプロイ）はGCP側のWorkload Identity連携（サービスアカウント`github-actions-deployer@food-stock-manager-507709.iam.gserviceaccount.com`、プール`github-actions-pool`）まで構築済み。GitHub Actionsワークフローはブランチ`codex/task10-cicd-workload-identity`でPR作成済みで、マージ後の実行確認は未実施（[履歴](history/2026-09-07_CI_CDの自動化.md)） |
 | 要件定義 | 完了（[`docs/specs/01_requirements/`](../specs/01_requirements/README.md)）。残る未決事項は「単位の選択肢6種が実際の利用に足りるか」の1件のみ（初期版の利用後に決める） |
 | 基本設計 | [画面遷移図](../specs/02_basic-design/画面遷移図.md)・[全機能に共通する設計](../specs/02_basic-design/00_共通/README.md)・[認証と家族グループ](../specs/02_basic-design/10_認証と家族グループ/README.md)・[常備食管理](../specs/02_basic-design/20_常備食管理/README.md)・[買い物リスト](../specs/02_basic-design/30_買い物リスト/README.md)・[期限通知](../specs/02_basic-design/40_期限通知/README.md) まで完了 |
 | 実装 | タスク7a〜7c・7d-1〜7d-5・7e-1〜7e-5・7f-1〜7f-4すべて`main`マージ済み。機能実装（タスク7）が完了。`apps/api`にGoogleログイン・セッションCookie・家族グループ7経路・表示名変更と退会の2経路・常備食の一覧/1件取得/登録/編集（`GET/POST/PUT /api/stocks`、`GET /api/stocks/{id}`）・残数増減（`PATCH /api/stocks/{id}/quantity`）・消費済（`POST /api/stocks/{id}/consume`。200で`{duplicateShoppingItem}`を返す）・削除（`DELETE /api/stocks/{id}`）・削除の取り消し（`POST /api/stocks/{id}/restore`）・消費済リストの取得（`GET /api/stocks/consumed`）・常備食への再登録（`POST /api/stocks/{id}/re-register`）に加え、買い物リストの一覧取得・追加（`GET/POST /api/shopping-items`）・購入状態変更（`PATCH /api/shopping-items/{id}/purchased`。常備食への反映を含む）・1件削除（`DELETE /api/shopping-items/{id}`）・購入済み一括削除（`DELETE /api/shopping-items/purchased`）・復元（`POST /api/shopping-items/restore`）・期限通知の通知時刻API（`GET/PATCH /api/notification-settings`）・購読API（`GET/POST /api/push-subscriptions`・`DELETE /api/push-subscriptions/me`）・配信バッチ（`POST /api/internal/notifications/dispatch`。Cloud Schedulerからの`X-Internal-Secret`ヘッダーで認証し、通知時刻が一致し当日未配信の世帯を確保して`StockService.countUrgent`で件数を数え、`web-push`で配信。`apps/api/src/notification-dispatch/`）がある。`GET /api/stocks/{id}`応答には作成者・更新者名も含む。DBは`prisma/schema.prisma`に`User` `Household` `Membership` `Invitation` `Session` `Stock` `ShoppingItem` `PushSubscription` `NotificationSetting`の9テーブル。`apps/web`は家族グループ関連の5画面・アカウント設定画面、常備食リスト画面（`urgentOnly=true`のURL絞り込みに対応）・登録編集画面（`/stocks/new`・`/stocks/{id}/edit`）・詳細画面（`/stocks/{id}`、在庫切れシートから買い物リストへ追加可能）・消費済リスト画面（`/stocks/consumed`、買い物リストへ追加するボタン付き）・買い物リスト画面（`/shopping-list`、一覧表示・FABからの直接入力追加・購入確認シート付きのチェック操作・削除/一括削除/復元）・PWAの土台（`public/manifest.json` `sw.js` `icons/`）・通知の設定画面（`/notifications`、通知トグルと通知時刻選択を即保存）が動く。常備食リスト/詳細のカートアイコンからの追加は未着手 |

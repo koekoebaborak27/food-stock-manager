@@ -11,7 +11,8 @@
 ├─ infra_design_03_Secret_Manager.md       ← 環境変数の秘密値の登録
 ├─ infra_design_04_Cloud_Run.md            ← api→webの順でのデプロイ・動作確認
 ├─ infra_design_05_Cloud_Scheduler.md      ← 期限通知の配信バッチの定期実行
-└─ infra_design_06_今後の課題.md            ← CI/CD自動化・カスタムドメイン等、後回しにした事項
+├─ infra_design_06_今後の課題.md            ← カスタムドメイン等、後回しにした事項
+└─ infra_design_07_CI_CDの自動化.md         ← GitHub ActionsからCloud Runへの自動デプロイ（Workload Identity連携）
 ```
 
 読む順序は [`infra_design_00_概要と全体構成.md`](infra_design_00_概要と全体構成.md) の「デプロイの順序」に従うこと。

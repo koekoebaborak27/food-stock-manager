@@ -4,12 +4,7 @@
 
 ## 1. CI/CD の自動化
 
-現状は `git push` や `main` へのマージが Cloud Run への反映につながらない（手動での `docker build` → `push` → `gcloud run deploy` が必要）。GitHub Actions から Artifact Registry への push・Cloud Run へのデプロイまで自動化する案があるが、次の理由でこのタイミングでは実装しない。
-
-- GitHub Actions から GCP を操作するには Workload Identity 連携（サービスアカウントキーを使わない認証方式）の設定が要り、GCP プロジェクト側の準備（サービスアカウント作成・IAM 権限付与・Workload Identity プールの作成）が本ドキュメントの手動デプロイ手順と重複する。まず手動デプロイで一通り動くことを確認し、各手順で必要な IAM 権限が明確になってから自動化した方が手戻りが少ない。
-- 個人の学習用途であり、デプロイ頻度が高くない。自動化のメリットより設定の手間が上回る段階。
-
-着手する場合は、[.github/workflows/ci.yml](../../../.github/workflows/ci.yml) の `verify` ジョブが通ったあとに実行するデプロイ用ジョブを追加する形にする。web は api の URL に依存してビルドする制約（[02_Artifact_Registry](infra_design_02_Artifact_Registry.md)）があるため、ジョブの順序は「api のビルド・push・デプロイ」→「web のビルド・push・デプロイ」を維持する。
+手動デプロイ（[00](infra_design_00_概要と全体構成.md)〜[05](infra_design_05_Cloud_Scheduler.md)）が安定して動くことを確認できたため着手した。手順は [07_CI_CDの自動化](infra_design_07_CI_CDの自動化.md) を参照（タスク10）。
 
 ## 2. カスタムドメイン
 
