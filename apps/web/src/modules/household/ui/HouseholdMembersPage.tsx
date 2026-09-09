@@ -49,6 +49,7 @@ export async function HouseholdMembersPage() {
                 </span>
               ) : null}
             </div>
+            {/* 除名ボタンは管理者にだけ、かつ自分自身の行には出さない（自分は除名できないため）。 */}
             {isAdmin && member.userId !== session.userId ? (
               <RemoveMemberButton
                 userId={member.userId}

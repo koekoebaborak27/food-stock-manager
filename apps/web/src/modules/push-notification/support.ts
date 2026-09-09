@@ -15,9 +15,12 @@ export type NotificationPrerequisiteReason = "UNSUPPORTED" | "IOS_NOT_INSTALLED"
 export function checkNotificationPrerequisite(
   input: BrowserSupportInput,
 ): NotificationPrerequisiteReason | null {
+  // Service Worker・PushManager・Notificationのいずれかが無ければ、
+  // このブラウザではWeb Pushの仕組み自体が使えない。
   if (!input.hasServiceWorker || !input.hasPushManager || !input.hasNotification) {
     return "UNSUPPORTED";
   }
+  // iOS SafariはPWAとしてホーム画面に追加（standalone表示）していないと通知を送れない。
   if (input.isIosDevice && !input.isStandaloneDisplay) {
     return "IOS_NOT_INSTALLED";
   }

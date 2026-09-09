@@ -20,6 +20,8 @@ export function CreateHouseholdForm() {
 
   function handleChange(value: string) {
     setName(value);
+    // 一度でも送信を試みた（touched）後は、入力のたびに即座にエラー表示を更新する。
+    // 最初の入力中はエラーを出さず、送信時にまとめて確かめる。
     if (touched) {
       setFieldError(validateHouseholdName(value));
     }
@@ -28,6 +30,8 @@ export function CreateHouseholdForm() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setTouched(true);
+    // 送信時は必ず最新の入力値で検証し直す（handleChangeがtouched前の入力を
+    // 検証していない場合があるため）。
     const error = validateHouseholdName(name);
     setFieldError(error);
     if (error) {

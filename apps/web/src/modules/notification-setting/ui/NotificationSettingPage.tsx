@@ -41,6 +41,7 @@ export function NotificationSettingPage() {
     setIsLoading(true);
     setHasError(false);
     try {
+      // 片方だけ古い状態にならないよう、購読状態と通知時刻を同時に取得する。
       const [subscription, notificationTime] = await Promise.all([
         getSubscriptionStatus(),
         getNotificationTime(),
@@ -57,6 +58,7 @@ export function NotificationSettingPage() {
   // トグルをオンにする。途中で止まった場合はオフへ戻し、理由に応じた案内ダイアログを出す
   // （00_期限通知共通.md 2〜3節）。案内対象でない失敗（登録の通信失敗）は帯で伝える。
   function handleEnable(): void {
+    // 通信完了を待たずに見た目を切り替え、操作した結果をすぐに画面へ反映する。
     setSubscribed(true);
     setIsTogglePending(true);
     void (async () => {
@@ -65,10 +67,12 @@ export function NotificationSettingPage() {
         if (result.ok) {
           showSuccessToast("保存しました");
         } else {
+          // 端末やブラウザの設定で登録できない場合は、表示を元へ戻して対処方法を案内する。
           setSubscribed(false);
           setGuidanceReason(result.reason);
         }
       } catch {
+        // 通信エラーでは案内ダイアログを出さず、画面上の状態だけを元へ戻す。
         setSubscribed(false);
         showErrorToast(GENERIC_ERROR_MESSAGE);
       } finally {
@@ -79,6 +83,7 @@ export function NotificationSettingPage() {
 
   // トグルをオフにする。確認ダイアログは出さない（00_期限通知共通.md 4節）。
   function handleDisable(): void {
+    // 停止操作もすぐに反映し、保存に失敗したときだけ購読中の表示へ戻す。
     setSubscribed(false);
     setIsTogglePending(true);
     void (async () => {
@@ -86,6 +91,7 @@ export function NotificationSettingPage() {
         await disableNotification();
         showSuccessToast("保存しました");
       } catch {
+        // 端末側の登録が残っている可能性があるため、停止前の表示を保つ。
         setSubscribed(true);
         showErrorToast(GENERIC_ERROR_MESSAGE);
       } finally {
@@ -97,6 +103,7 @@ export function NotificationSettingPage() {
   // 通知時刻を変える。保存に失敗したら選択前の値に戻す（10_通知の設定.md 4節）。
   function handleTimeChange(next: NotificationTime): void {
     const previous = time;
+    // 選択した時刻をただちに表示し、保存できなければ選択前の時刻へ戻す。
     setTime(next);
     setIsTimePending(true);
     void (async () => {
@@ -126,6 +133,7 @@ export function NotificationSettingPage() {
       {!isLoading && hasError ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
           <p className="max-w-xs text-sm text-muted-foreground">{LOAD_FAILED_MESSAGE}</p>
+          {/* 読み込み失敗時は画面遷移なしで、初期取得だけをやり直せるようにする。 */}
           <Button type="button" variant="secondary" onClick={() => void load()}>
             もう一度読み込む
           </Button>
@@ -139,6 +147,7 @@ export function NotificationSettingPage() {
               <Label htmlFor="notification-toggle">通知を受け取る</Label>
               <p className="text-xs text-muted-foreground">この端末で期限の通知を受け取ります。</p>
             </div>
+            {/* 保存中の連続操作を防ぎ、状態が戻る競合を避ける。 */}
             <button
               id="notification-toggle"
               type="button"

@@ -42,6 +42,8 @@ export class SessionService {
       return null;
     }
 
+    // DBにはハッシュ化した値しか保存していないので、Cookieの生トークンも
+    // 同じ手順でハッシュ化してから探す。
     const session = await this.prisma.session.findUnique({
       where: { tokenHash: hashSessionToken(rawToken) },
     });
@@ -51,15 +53,20 @@ export class SessionService {
 
     const now = new Date();
     if (isSessionExpired(session.expiresAt, now)) {
+      // 期限切れの行はここで掃除する。deleteが失敗しても
+      // （他の処理が先に消していた等）未ログイン扱いにできればよいので無視する。
       await this.prisma.session.delete({ where: { id: session.id } }).catch(() => undefined);
       return null;
     }
 
+    // 使われるたびに有効期限を今から30日後へ延長する（スライディング方式）。
     await this.prisma.session.update({
       where: { id: session.id },
       data: { expiresAt: computeSessionExpiry(now) },
     });
 
+    // 家族グループに所属していない利用者もいるので、membershipが無い場合は
+    // householdId/roleともnullのまま返す。
     const membership = await this.prisma.membership.findUnique({
       where: { userId: session.userId },
     });

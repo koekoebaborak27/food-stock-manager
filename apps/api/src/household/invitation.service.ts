@@ -26,6 +26,8 @@ export class InvitationService {
       throw Errors.noHousehold();
     }
 
+    // invitationはcreatedByIdごとに1件しか持てないので、以前発行した分がまだ
+    // 期限内ならそれをそのまま返し、新規発行はしない。
     const existing = await this.prisma.invitation.findUnique({ where: { createdById: userId } });
     const now = new Date();
     if (existing && !isInvitationExpired(existing.expiresAt, now)) {
@@ -33,6 +35,7 @@ export class InvitationService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // 期限切れの古いコードが残っていれば、一意制約に引っかからないよう先に消す。
       if (existing) {
         await tx.invitation.deleteMany({ where: { id: existing.id } });
       }

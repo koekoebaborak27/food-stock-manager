@@ -18,16 +18,19 @@ export function getSubscriptionStatus(): Promise<{ subscribed: boolean }> {
 // （docs/specs/02_basic-design/40_期限通知/00_期限通知共通.md 2節）。
 // 途中で止まった場合は、呼び出し側でトグルをオフへ戻し、reasonに応じた案内を出す。
 export async function enableNotification(): Promise<EnableNotificationResult> {
+  // 端末の許可を求める前に、対応ブラウザか・iOSならホーム画面に追加済みかを確かめる。
   const prerequisiteReason = checkNotificationPrerequisite(readBrowserSupport());
   if (prerequisiteReason) {
     return { ok: false, reason: prerequisiteReason };
   }
 
+  // ブラウザの通知許可ダイアログを出す。拒否されたらここで打ち切る。
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
     return { ok: false, reason: "PERMISSION_DENIED" };
   }
 
+  // Service Workerを登録し、すでに購読済みならそれを使い、無ければ新規に購読する。
   const registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL);
   const subscription =
     (await registration.pushManager.getSubscription()) ??
@@ -36,6 +39,7 @@ export async function enableNotification(): Promise<EnableNotificationResult> {
       applicationServerKey: toApplicationServerKey(getVapidPublicKey()),
     }));
 
+  // ブラウザが払い出した購読情報（送信先・鍵）をサーバー側にも登録する。
   const json = subscription.toJSON();
   await clientApiFetch("/api/push-subscriptions", {
     method: "POST",

@@ -72,6 +72,7 @@ export function StockDetailPage({ stock: initialStock }: { stock: StockDetail })
           body: JSON.stringify({ delta }),
         });
         setStock(updated);
+        // 残数を減らした結果0になった場合だけ、消費済にするかどうかを選ぶシートを出す。
         if (delta === -1 && updated.quantity === 0) {
           setConsumeSheetOpen(true);
         }
@@ -123,6 +124,8 @@ export function StockDetailPage({ stock: initialStock }: { stock: StockDetail })
         setPendingDeleteUndo(stock.id, stock.name);
         router.push("/");
       } catch (error) {
+        // 表示してから他の利用者が先に変更していた場合は、削除を諦めて
+        // 「読み込み直す」ダイアログへ誘導する（updatedAtが送った値と食い違う失敗）。
         if (error instanceof ApiError && error.code === "STOCK_UPDATE_CONFLICT") {
           setConflictOpen(true);
           return;
