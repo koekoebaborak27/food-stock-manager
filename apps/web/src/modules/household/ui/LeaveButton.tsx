@@ -28,6 +28,8 @@ export function LeaveButton() {
     startTransition(async () => {
       const result = await leaveHouseholdAction();
       if (!result.ok) {
+        // 管理者が他のメンバーを残したまま脱退しようとした失敗だけは、
+        // 通常のエラー帯ではなく「脱退できない理由」を説明する専用ダイアログを出す。
         if (result.code === "HOUSEHOLD_HAS_OTHER_MEMBERS") {
           setBlockedOpen(true);
         } else {

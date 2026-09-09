@@ -74,8 +74,12 @@ export function AccountSettingsForm({ displayName: initialDisplayName }: Account
     startTransition(async () => {
       try {
         await clientApiFetch("/api/users/me", { method: "DELETE" });
+        // 退会に成功するとセッションCookieがサーバー側で削除されているので、
+        // クライアント側の状態は更新せずログイン画面へ丸ごと遷移させる。
         window.location.href = "/login";
       } catch (error) {
+        // 管理者が他のメンバーを残したまま退会しようとした失敗だけは、
+        // 通常のエラー帯ではなく理由を説明する専用ダイアログを出す。
         if (error instanceof ApiError && error.code === "HOUSEHOLD_HAS_OTHER_MEMBERS") {
           setBlockedOpen(true);
           return;

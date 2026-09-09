@@ -6,7 +6,9 @@ const AFTER_LOGIN_PATH = "/";
 
 export function decideRedirect(hasSessionCookie: boolean, pathname: string): string | null {
   if (pathname === LOGIN_PATH) {
+    // ログイン済みでログイン画面へ来た場合はトップへ流す。未ログインならそのまま表示する。
     return hasSessionCookie ? AFTER_LOGIN_PATH : null;
   }
+  // ログイン画面以外は、未ログインならログイン画面へ流す。ログイン済みはそのまま表示する。
   return hasSessionCookie ? null : LOGIN_PATH;
 }

@@ -31,6 +31,8 @@ export function InvitationIssuePage() {
       return;
     }
     try {
+      // クリップボードへの書き込みは権限やブラウザの状況で失敗しうるので、
+      // 失敗時は例外を投げっぱなしにせずエラー帯で伝える。
       await navigator.clipboard.writeText(invitation.code);
       showSuccessToast("コピーしました");
     } catch {

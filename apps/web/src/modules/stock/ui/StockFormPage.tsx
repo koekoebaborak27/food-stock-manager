@@ -129,10 +129,14 @@ export function StockFormPage({ mode, stock }: StockFormPageProps) {
               body: JSON.stringify(input),
             },
           );
+          // 同名の未削除・未消費の食品がすでにあっても登録自体は成功させ、
+          // その旨だけを一覧画面の帯で伝える。
           setPendingSaveToast(
             created.duplicateName ? "保存しました(同じ名前の食品がすでにあります)" : "保存しました",
           );
         } else if (stock) {
+          // 編集は、画面が最初に読んだupdatedAtを一緒に送る。サーバー側で
+          // 値が食い違っていれば（他の利用者が先に変更）STOCK_UPDATE_CONFLICTになる。
           await clientApiFetch<StockDetail>(`/api/stocks/${stock.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -142,6 +146,7 @@ export function StockFormPage({ mode, stock }: StockFormPageProps) {
         }
         router.push("/");
       } catch (error) {
+        // 競合の場合は保存を諦めて「読み込み直す」ダイアログへ誘導する。
         if (error instanceof ApiError && error.code === "STOCK_UPDATE_CONFLICT") {
           setConflictOpen(true);
           return;

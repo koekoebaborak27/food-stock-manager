@@ -36,11 +36,14 @@ export function JoinHouseholdForm({ hasHousehold }: JoinHouseholdFormProps) {
 
   function handleChange(value: string) {
     setCode(value);
+    // 一度でも送信を試みた（touched）後だけ、入力のたびに即座にエラー表示を更新する。
     if (touched) {
       setFieldError(validateInvitationCode(value));
     }
   }
 
+  // 実際にAPIを呼ぶ処理。確認ダイアログが要らない場合はhandleSubmitから直接、
+  // 要る場合はダイアログの「参加する」から呼ぶ。
   function submit() {
     startTransition(async () => {
       const result = await redeemInvitationAction(code);
@@ -58,6 +61,8 @@ export function JoinHouseholdForm({ hasHousehold }: JoinHouseholdFormProps) {
     if (error) {
       return;
     }
+    // すでに家族グループに所属している場合は、参加すると今のグループから
+    // 抜けることになるため、即座に参加させず確認ダイアログを挟む。
     if (hasHousehold) {
       setConfirmOpen(true);
       return;
